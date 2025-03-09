@@ -364,7 +364,7 @@ const CreateGameForm = () => {
                         height={40}
                         className="rounded-md cursor-pointer border-2 border-red-500"
                       />
-                      <div className="absolute inset-0 bg-red-500 bg-opacity-25 rounded-md flex items-center justify-center">
+                      <div className="absolute top-0 right-0 bg-red-500 rounded-bl-md rounded-tr-md w-5 h-5 flex items-center justify-center">
                         <span className="text-white text-xs font-bold">✖</span>
                       </div>
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center rounded-md transition-all">
@@ -455,8 +455,8 @@ const CreateGameForm = () => {
                       className="rounded-md"
                     />
                     {formData.globalBans.includes(champion.id) && (
-                      <div className="absolute inset-0 bg-red-500 bg-opacity-25 rounded-md flex items-center justify-center">
-                        <span className="text-white text-lg font-bold">✖</span>
+                      <div className="absolute top-0 right-0 bg-red-500 rounded-bl-md rounded-tr-md w-6 h-6 flex items-center justify-center">
+                        <span className="text-white text-sm font-bold">✖</span>
                       </div>
                     )}
                     <p className="text-xs text-center mt-1 truncate">
