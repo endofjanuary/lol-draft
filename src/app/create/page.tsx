@@ -1,21 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+
+interface Champion {
+  id: string;
+  name: string;
+  image: {
+    full: string;
+  };
+}
 
 export default function CreateGame() {
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
   const [formData, setFormData] = useState({
-    patchVersion: "14.10.1",
+    patchVersion: "",
     gameName: "",
     blueTeamName: "",
     redTeamName: "",
     draftMode: "",
     tournamentSet: "",
     timerSetting: "",
-    globalBans: [],
+    globalBans: [] as string[],
     tournamentImage: null,
   });
+  const [versions, setVersions] = useState<string[]>([]);
+  const [showChampionModal, setShowChampionModal] = useState(false);
+  const [champions, setChampions] = useState<Champion[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Handle client-side hydration
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Fetch patch versions only after component is hydrated on client
+  useEffect(() => {
+    if (!isClient) return;
+
+    const fetchVersions = async () => {
+      try {
+        const response = await fetch(
+          "https://ddragon.leagueoflegends.com/api/versions.json"
+        );
+        const data = await response.json();
+        // Get the latest 5 versions
+        const latestVersions = data.slice(0, 5);
+        setVersions(latestVersions);
+        // Set default to latest version
+        if (latestVersions.length > 0) {
+          setFormData((prev) => ({ ...prev, patchVersion: latestVersions[0] }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch versions:", error);
+      }
+    };
+
+    fetchVersions();
+  }, [isClient]);
+
+  // Fetch champions when needed
+  const fetchChampions = async () => {
+    if (!formData.patchVersion) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `https://ddragon.leagueoflegends.com/cdn/${formData.patchVersion}/data/ko_KR/champion.json`
+      );
+      const data = await response.json();
+
+      // Convert object to array and sort by name
+      const championsArray = Object.values(data.data) as Champion[];
+      setChampions(championsArray);
+    } catch (error) {
+      console.error("Failed to fetch champions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -62,6 +127,40 @@ export default function CreateGame() {
     // Then potentially navigate to the game room
   };
 
+  const openChampionModal = () => {
+    setShowChampionModal(true);
+    fetchChampions();
+  };
+
+  const closeChampionModal = () => {
+    setShowChampionModal(false);
+  };
+
+  const toggleChampionBan = (championId: string) => {
+    setFormData((prev) => {
+      if (prev.globalBans.includes(championId)) {
+        return {
+          ...prev,
+          globalBans: prev.globalBans.filter((id) => id !== championId),
+        };
+      } else {
+        return {
+          ...prev,
+          globalBans: [...prev.globalBans, championId],
+        };
+      }
+    });
+  };
+
+  // Only render the full content after client-side hydration
+  if (!isClient) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#030C28] text-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center min-h-screen p-8 bg-[#030C28] text-white">
       <main className="flex flex-col items-center max-w-3xl w-full py-8">
@@ -86,8 +185,15 @@ export default function CreateGame() {
                 onChange={handleInputChange}
                 className="w-full p-2 rounded-md bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="14.10.1">14.10.1</option>
-                <option value="15.10.1">15.10.1</option>
+                {versions.length > 0 ? (
+                  versions.map((version) => (
+                    <option key={version} value={version}>
+                      {version}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">로딩 중...</option>
+                )}
               </select>
             </div>
 
@@ -250,8 +356,31 @@ export default function CreateGame() {
               <label className="block text-sm font-medium">
                 글로벌 밴 챔피언 추가 (선택사항)
               </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {formData.globalBans.map((championId) => (
+                  <div
+                    key={championId}
+                    className="relative group"
+                    onClick={() => toggleChampionBan(championId)}
+                  >
+                    <Image
+                      src={`https://ddragon.leagueoflegends.com/cdn/${formData.patchVersion}/img/champion/${championId}.png`}
+                      alt={championId}
+                      width={40}
+                      height={40}
+                      className="rounded-md cursor-pointer border-2 border-red-500"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center rounded-md transition-all">
+                      <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">
+                        ✖
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
               <button
                 type="button"
+                onClick={openChampionModal}
                 className="w-10 h-10 rounded-md border border-gray-500 flex items-center justify-center text-2xl hover:bg-gray-700"
               >
                 +
@@ -290,6 +419,68 @@ export default function CreateGame() {
           </div>
         </form>
       </main>
+
+      {/* Champion Selection Modal */}
+      {showChampionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg w-full max-w-4xl max-h-[80vh] overflow-y-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">글로벌 밴 챔피언 선택</h3>
+              <button
+                onClick={closeChampionModal}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ✖
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
+                {champions.map((champion) => (
+                  <div
+                    key={champion.id}
+                    className={`relative cursor-pointer transition-all ${
+                      formData.globalBans.includes(champion.id)
+                        ? "ring-2 ring-red-500"
+                        : ""
+                    }`}
+                    onClick={() => toggleChampionBan(champion.id)}
+                  >
+                    <Image
+                      src={`https://ddragon.leagueoflegends.com/cdn/${formData.patchVersion}/img/champion/${champion.id}.png`}
+                      alt={champion.name}
+                      width={60}
+                      height={60}
+                      className="rounded-md"
+                    />
+                    {formData.globalBans.includes(champion.id) && (
+                      <div className="absolute inset-0 bg-red-500 bg-opacity-30 rounded-md flex items-center justify-center">
+                        <span className="text-white text-lg font-bold">✖</span>
+                      </div>
+                    )}
+                    <p className="text-xs text-center mt-1 truncate">
+                      {champion.name}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={closeChampionModal}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded"
+              >
+                완료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
