@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 
 interface Champion {
   id: string;
@@ -12,9 +13,9 @@ interface Champion {
   };
 }
 
-export default function CreateGame() {
+// Client component with no SSR
+const CreateGameForm = () => {
   const router = useRouter();
-  const [isClient, setIsClient] = useState(false);
   const [formData, setFormData] = useState({
     patchVersion: "",
     gameName: "",
@@ -31,15 +32,8 @@ export default function CreateGame() {
   const [champions, setChampions] = useState<Champion[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Handle client-side hydration
+  // Fetch patch versions on component mount
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Fetch patch versions only after component is hydrated on client
-  useEffect(() => {
-    if (!isClient) return;
-
     const fetchVersions = async () => {
       try {
         const response = await fetch(
@@ -59,7 +53,7 @@ export default function CreateGame() {
     };
 
     fetchVersions();
-  }, [isClient]);
+  }, []);
 
   // Fetch champions when needed
   const fetchChampions = async () => {
@@ -72,8 +66,9 @@ export default function CreateGame() {
       );
       const data = await response.json();
 
-      // Convert object to array and sort by name
+      // Convert object to array and sort by Korean name
       const championsArray = Object.values(data.data) as Champion[];
+      championsArray.sort((a, b) => a.name.localeCompare(b.name, "ko"));
       setChampions(championsArray);
     } catch (error) {
       console.error("Failed to fetch champions:", error);
@@ -151,15 +146,6 @@ export default function CreateGame() {
       }
     });
   };
-
-  // Only render the full content after client-side hydration
-  if (!isClient) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#030C28] text-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center min-h-screen p-8 bg-[#030C28] text-white">
@@ -357,26 +343,37 @@ export default function CreateGame() {
                 글로벌 밴 챔피언 추가 (선택사항)
               </label>
               <div className="flex flex-wrap gap-2 mb-2">
-                {formData.globalBans.map((championId) => (
-                  <div
-                    key={championId}
-                    className="relative group"
-                    onClick={() => toggleChampionBan(championId)}
-                  >
-                    <Image
-                      src={`https://ddragon.leagueoflegends.com/cdn/${formData.patchVersion}/img/champion/${championId}.png`}
-                      alt={championId}
-                      width={40}
-                      height={40}
-                      className="rounded-md cursor-pointer border-2 border-red-500"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 flex items-center justify-center rounded-md transition-all">
-                      <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">
-                        ✖
-                      </span>
+                {formData.globalBans
+                  .map((championId) =>
+                    champions.find((c) => c.id === championId)
+                  )
+                  .filter(Boolean)
+                  .sort((a, b) => a!.name.localeCompare(b!.name, "ko"))
+                  .map((champion) => (
+                    <div
+                      key={champion!.id}
+                      className="relative group"
+                      onClick={() => toggleChampionBan(champion!.id)}
+                    >
+                      <Image
+                        src={`https://ddragon.leagueoflegends.com/cdn/${
+                          formData.patchVersion
+                        }/img/champion/${champion!.id}.png`}
+                        alt={champion!.name}
+                        width={40}
+                        height={40}
+                        className="rounded-md cursor-pointer border-2 border-red-500"
+                      />
+                      <div className="absolute inset-0 bg-red-500 bg-opacity-25 rounded-md flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">✖</span>
+                      </div>
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center rounded-md transition-all">
+                        <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">
+                          ✖
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
               <button
                 type="button"
@@ -458,7 +455,7 @@ export default function CreateGame() {
                       className="rounded-md"
                     />
                     {formData.globalBans.includes(champion.id) && (
-                      <div className="absolute inset-0 bg-red-500 bg-opacity-30 rounded-md flex items-center justify-center">
+                      <div className="absolute inset-0 bg-red-500 bg-opacity-25 rounded-md flex items-center justify-center">
                         <span className="text-white text-lg font-bold">✖</span>
                       </div>
                     )}
@@ -483,4 +480,18 @@ export default function CreateGame() {
       )}
     </div>
   );
+};
+
+// Dynamically load the form with ssr disabled to prevent hydration issues
+const ClientOnlyCreateGame = dynamic(() => Promise.resolve(CreateGameForm), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#030C28] text-white">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  ),
+});
+
+export default function CreateGame() {
+  return <ClientOnlyCreateGame />;
 }
