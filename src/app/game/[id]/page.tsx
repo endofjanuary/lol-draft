@@ -4,6 +4,26 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import NicknameModal from "@/components/game/NicknameModal";
+import LobbyPhase from "@/components/game/LobbyPhase";
+
+interface GameInfo {
+  gameCode: string;
+  version: string;
+  createdAt: number;
+  playerType: string;
+  draftType: string;
+  matchFormat: string;
+  teamNames: {
+    blue: string;
+    red: string;
+  };
+  status: {
+    phase: number;
+    blueScore: number;
+    redScore: number;
+    currentSet: number;
+  };
+}
 
 export default function GamePage() {
   const { id } = useParams();
@@ -12,6 +32,10 @@ export default function GamePage() {
   const [nickname, setNickname] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gameInfo, setGameInfo] = useState<GameInfo | null>(null);
+  const [position, setPosition] = useState<string>("spectator");
+  const [isHost, setIsHost] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Connect to socket.io server
   useEffect(() => {
@@ -39,6 +63,31 @@ export default function GamePage() {
       setError("서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.");
     });
 
+    // Listen for game events
+    socketInstance.on("draft_started", () => {
+      fetchGameInfo();
+    });
+
+    socketInstance.on("phase_progressed", () => {
+      fetchGameInfo();
+    });
+
+    socketInstance.on("game_result_confirmed", () => {
+      fetchGameInfo();
+    });
+
+    socketInstance.on("client_joined", () => {
+      fetchGameInfo();
+    });
+
+    socketInstance.on("position_changed", () => {
+      fetchGameInfo();
+    });
+
+    socketInstance.on("ready_state_changed", () => {
+      fetchGameInfo();
+    });
+
     setSocket(socketInstance);
 
     // Cleanup on component unmount
@@ -46,6 +95,25 @@ export default function GamePage() {
       socketInstance.disconnect();
     };
   }, []);
+
+  // Fetch game info
+  const fetchGameInfo = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`http://localhost:8000/games/${id}`);
+      if (!response.ok) {
+        throw new Error("게임 정보를 불러오는데 실패했습니다.");
+      }
+      const data = await response.json();
+      setGameInfo(data);
+      console.log("Game info:", data);
+    } catch (error) {
+      console.error("Failed to fetch game info:", error);
+      setError("게임 정보를 불러오는데 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleJoinGame = (userNickname: string) => {
     if (!socket || !userNickname.trim()) return;
@@ -61,13 +129,65 @@ export default function GamePage() {
       },
       (response: any) => {
         if (response.status === "success") {
-          console.log("Successfully joined game");
+          console.log("Successfully joined game", response);
           setShowNicknameModal(false);
+
+          // Update position and host status if provided in response
+          if (response.data?.position) {
+            setPosition(response.data.position);
+          }
+
+          if (response.data?.isHost) {
+            setIsHost(true);
+          }
+
+          // Fetch game info after joining
+          fetchGameInfo();
         } else {
           setError(response.message || "게임 참가에 실패했습니다.");
         }
       }
     );
+  };
+
+  // Handle position change
+  const handlePositionChange = (newPosition: string) => {
+    if (!socket) return;
+
+    socket.emit(
+      "change_position",
+      { position: newPosition },
+      (response: any) => {
+        if (response.status === "success") {
+          setPosition(newPosition);
+          console.log(`Position changed to ${newPosition}`);
+        } else {
+          setError(response.message || "포지션 변경에 실패했습니다.");
+        }
+      }
+    );
+  };
+
+  // Handle ready state change
+  const handleReadyChange = (isReady: boolean) => {
+    if (!socket) return;
+
+    socket.emit("change_ready_state", { isReady }, (response: any) => {
+      if (response.status !== "success") {
+        setError(response.message || "준비 상태 변경에 실패했습니다.");
+      }
+    });
+  };
+
+  // Handle start draft
+  const handleStartDraft = () => {
+    if (!socket || !isHost) return;
+
+    socket.emit("start_draft", {}, (response: any) => {
+      if (response.status !== "success") {
+        setError(response.message || "게임 시작에 실패했습니다.");
+      }
+    });
   };
 
   // Show loading state if not connected
@@ -79,6 +199,84 @@ export default function GamePage() {
       </div>
     );
   }
+
+  // Render game content based on phase
+  const renderGameContent = () => {
+    // Show loading while fetching game info
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="ml-3">게임 정보를 불러오는 중입니다...</p>
+        </div>
+      );
+    }
+
+    // If game info is not available yet
+    if (!gameInfo) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-gray-400">게임 정보를 불러오는 중입니다...</p>
+        </div>
+      );
+    }
+
+    // Ensure we have the necessary gameInfo structure
+    if (!gameInfo.status) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-gray-400">
+            게임 정보가 올바르지 않습니다. 다시 시도해주세요.
+          </p>
+        </div>
+      );
+    }
+
+    // Solo game (to be implemented later)
+    if (gameInfo.playerType === "single") {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-gray-400">솔로 게임 기능은 현재 개발 중입니다.</p>
+        </div>
+      );
+    }
+
+    // For 1v1 or 5v5 games, show different UI based on phase
+    const phase = gameInfo.status.phase;
+
+    if (phase === 0) {
+      // Lobby phase - pass id directly to component
+      return (
+        <LobbyPhase
+          gameInfo={gameInfo}
+          gameId={id as string} // Pass the ID directly from URL params
+          position={position}
+          isHost={isHost}
+          onPositionChange={handlePositionChange}
+          onReadyChange={handleReadyChange}
+          onStartDraft={handleStartDraft}
+        />
+      );
+    } else if (phase >= 1 && phase <= 20) {
+      // Draft phase (to be implemented later)
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-gray-400">
+            밴픽 화면은 현재 개발 중입니다. (Phase: {phase})
+          </p>
+        </div>
+      );
+    } else if (phase === 21) {
+      // Result phase (to be implemented later)
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-gray-400">결과 화면은 현재 개발 중입니다.</p>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-[#030C28] text-white">
@@ -95,14 +293,8 @@ export default function GamePage() {
       {/* Nickname Modal */}
       {showNicknameModal && <NicknameModal onSubmit={handleJoinGame} />}
 
-      {/* Empty screen after joining, for future implementation */}
-      {!showNicknameModal && (
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-gray-400">
-            게임에 참가했습니다. 추가 기능은 곧 구현될 예정입니다.
-          </p>
-        </div>
-      )}
+      {/* Game Content based on phase */}
+      {!showNicknameModal && renderGameContent()}
     </div>
   );
 }
