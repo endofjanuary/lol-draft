@@ -31,6 +31,8 @@ const CreateGameForm = () => {
   const [showChampionModal, setShowChampionModal] = useState(false);
   const [champions, setChampions] = useState<Champion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Fetch patch versions on component mount
   useEffect(() => {
@@ -115,11 +117,57 @@ const CreateGameForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted with data:", formData);
-    // Here you would handle creating the game with the provided options
-    // Then potentially navigate to the game room
+    setIsSubmitting(true);
+    setApiError(null);
+
+    try {
+      // Map form data to API request format
+      const requestBody = {
+        version: formData.patchVersion,
+        draftType: formData.draftMode || "tournament", // Default to tournament if not selected
+        playerType: "5v5", // Currently hardcoded as 5v5
+        matchFormat: formData.tournamentSet || "bo3", // Default to bo3 if not selected
+        timeLimit: formData.timerSetting === "limited", // true if limited, false if unlimited
+        // Optional fields could be added here
+        teamNames: {
+          blue: formData.blueTeamName || "블루팀",
+          red: formData.redTeamName || "레드팀",
+        },
+        gameName: formData.gameName || "새로운 게임",
+        globalBans: formData.globalBans,
+      };
+
+      console.log("Creating game with options:", requestBody);
+
+      // Call the server API to create the game
+      const response = await fetch("http://localhost:8000/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "게임 생성에 실패했습니다.");
+      }
+
+      const gameData = await response.json();
+      console.log("Game created successfully:", gameData);
+
+      // Navigate to the game page with the newly created game code
+      router.push(`/game/${gameData.gameCode}`);
+    } catch (error) {
+      console.error("Failed to create game:", error);
+      setApiError(
+        error instanceof Error
+          ? error.message
+          : "게임 생성 중 오류가 발생했습니다."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openChampionModal = () => {
@@ -159,6 +207,12 @@ const CreateGameForm = () => {
         <h2 className="text-xl mb-8 text-center text-blue-300">
           밴픽 시뮬레이션에 오신 것을 환영합니다!
         </h2>
+
+        {apiError && (
+          <div className="w-full bg-red-600 text-white p-3 rounded-md mb-6">
+            <p>{apiError}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="w-full space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -409,9 +463,38 @@ const CreateGameForm = () => {
           <div className="flex justify-center pt-4">
             <button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors"
+              disabled={isSubmitting}
+              className={`${
+                isSubmitting ? "bg-gray-500" : "bg-blue-600 hover:bg-blue-700"
+              } text-white font-bold py-3 px-8 rounded-lg transition-colors flex items-center`}
             >
-              생성
+              {isSubmitting ? (
+                <>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  생성 중...
+                </>
+              ) : (
+                "생성"
+              )}
             </button>
           </div>
         </form>
