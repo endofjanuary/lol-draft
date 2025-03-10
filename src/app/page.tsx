@@ -7,7 +7,7 @@ export default function Home() {
   const router = useRouter();
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [gameCode, setGameCode] = useState("");
-  const [nickname, setNickname] = useState("");
+  // Removed nickname state
 
   const handleCreateNew = () => {
     router.push("/create");
@@ -19,9 +19,10 @@ export default function Home() {
 
   const handleJoinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would handle joining the game with the code and nickname
-    console.log("Joining game:", gameCode, "as", nickname);
+    // Updated to only use gameCode
+    console.log("Joining game:", gameCode);
     // You can add navigation to the game room or other logic here
+    router.push(`/game/${gameCode}`);
   };
 
   return (
@@ -70,22 +71,7 @@ export default function Home() {
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="nickname"
-                className="block text-sm font-medium mb-1"
-              >
-                닉네임
-              </label>
-              <input
-                id="nickname"
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
+            {/* Nickname field removed */}
 
             <button
               type="submit"
