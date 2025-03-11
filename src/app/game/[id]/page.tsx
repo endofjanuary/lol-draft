@@ -6,6 +6,12 @@ import { io, Socket } from "socket.io-client";
 import NicknameModal from "@/components/game/NicknameModal";
 import LobbyPhase from "@/components/game/LobbyPhase";
 
+interface Player {
+  nickname: string;
+  position: string;
+  isReady: boolean;
+}
+
 interface GameInfo {
   gameCode: string;
   version: string;
@@ -23,6 +29,7 @@ interface GameInfo {
     redScore: number;
     currentSet: number;
   };
+  clients: Player[]; // Added clients array to the interface
 }
 
 export default function GamePage() {
@@ -36,6 +43,10 @@ export default function GamePage() {
   const [position, setPosition] = useState<string>("spectator");
   const [isHost, setIsHost] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastLeftPlayer, setLastLeftPlayer] = useState<{
+    nickname: string;
+    position: string;
+  } | null>(null);
 
   // Connect to socket.io server
   useEffect(() => {
@@ -86,6 +97,19 @@ export default function GamePage() {
 
     socketInstance.on("ready_state_changed", () => {
       fetchGameInfo();
+    });
+
+    // Add handler for client_left event
+    socketInstance.on("client_left", (data) => {
+      console.log(
+        `${data.nickname} left the game (position: ${data.position})`
+      );
+      setLastLeftPlayer(data);
+      // Immediately fetch updated game info
+      fetchGameInfo();
+
+      // Clear the left player notification after a delay
+      setTimeout(() => setLastLeftPlayer(null), 5000);
     });
 
     setSocket(socketInstance);
@@ -154,6 +178,9 @@ export default function GamePage() {
   const handlePositionChange = (newPosition: string) => {
     if (!socket) return;
 
+    // Set loading to prevent multiple clicks
+    setIsLoading(true);
+
     socket.emit(
       "change_position",
       { position: newPosition },
@@ -161,9 +188,13 @@ export default function GamePage() {
         if (response.status === "success") {
           setPosition(newPosition);
           console.log(`Position changed to ${newPosition}`);
+
+          // Immediately fetch game info after position change
+          fetchGameInfo();
         } else {
           setError(response.message || "포지션 변경에 실패했습니다.");
         }
+        setIsLoading(false);
       }
     );
   };
@@ -172,10 +203,14 @@ export default function GamePage() {
   const handleReadyChange = (isReady: boolean) => {
     if (!socket) return;
 
+    // Set loading to prevent multiple clicks
+    setIsLoading(true);
+
     socket.emit("change_ready_state", { isReady }, (response: any) => {
       if (response.status !== "success") {
         setError(response.message || "준비 상태 변경에 실패했습니다.");
       }
+      setIsLoading(false);
     });
   };
 
@@ -249,9 +284,10 @@ export default function GamePage() {
       return (
         <LobbyPhase
           gameInfo={gameInfo}
-          gameId={id as string} // Pass the ID directly from URL params
+          gameId={id as string}
           position={position}
           isHost={isHost}
+          players={gameInfo.clients || []} // Pass clients directly from gameInfo
           onPositionChange={handlePositionChange}
           onReadyChange={handleReadyChange}
           onStartDraft={handleStartDraft}
@@ -287,6 +323,19 @@ export default function GamePage() {
           <button className="ml-2 font-bold" onClick={() => setError(null)}>
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Player left notification */}
+      {lastLeftPlayer && (
+        <div className="fixed top-16 left-1/2 transform -translate-x-1/2 bg-yellow-600 text-white px-4 py-2 rounded-md z-50 transition-opacity">
+          {lastLeftPlayer.nickname}님이 게임에서 나갔습니다. (포지션:{" "}
+          {lastLeftPlayer.position === "spectator"
+            ? "관전자"
+            : lastLeftPlayer.position.startsWith("blue")
+            ? "블루팀"
+            : "레드팀"}
+          )
         </div>
       )}
 

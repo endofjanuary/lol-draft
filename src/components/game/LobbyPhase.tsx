@@ -21,9 +21,10 @@ interface Player {
 
 interface LobbyPhaseProps {
   gameInfo: GameInfo;
-  gameId: string; // Add direct gameId prop
+  gameId: string;
   position: string;
   isHost: boolean;
+  players: Player[]; // Added players prop to receive directly from parent
   onPositionChange: (position: string) => void;
   onReadyChange: (isReady: boolean) => void;
   onStartDraft: () => void;
@@ -31,55 +32,33 @@ interface LobbyPhaseProps {
 
 export default function LobbyPhase({
   gameInfo,
-  gameId, // Add gameId to function parameters
+  gameId,
   position,
   isHost,
+  players, // Add players to component parameters
   onPositionChange,
   onReadyChange,
   onStartDraft,
 }: LobbyPhaseProps) {
-  const [players, setPlayers] = useState<Player[]>([]);
   const [isReady, setIsReady] = useState(false);
+  const [prevPosition, setPrevPosition] = useState(position);
 
-  // Fetch players on component mount and periodically
+  // Remove the fetchPlayers useEffect since we're now getting players from props
+
+  // Reset ready status when position changes and update local ready state from players prop
   useEffect(() => {
-    // Use gameId directly instead of gameInfo.gameCode
-    if (!gameId) {
-      console.error("Game ID is undefined, can't fetch players");
-      return;
-    }
-
-    const fetchPlayers = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:8000/games/${gameId}/clients`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setPlayers(data.clients || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch players:", error);
+    if (position !== prevPosition) {
+      // Position has changed, reset ready state
+      setIsReady(false);
+      setPrevPosition(position);
+    } else {
+      // Update ready status from players data
+      const currentPlayer = players.find((p) => p.position === position);
+      if (currentPlayer) {
+        setIsReady(currentPlayer.isReady);
       }
-    };
-
-    fetchPlayers();
-
-    // Poll for players every 2 seconds
-    const interval = setInterval(fetchPlayers, 2000);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [gameId]); // Use gameId in dependency array
-
-  // Update ready status if current player is in the list
-  useEffect(() => {
-    const currentPlayer = players.find((p) => p.position === position);
-    if (currentPlayer) {
-      setIsReady(currentPlayer.isReady);
     }
-  }, [players, position]);
+  }, [players, position, prevPosition]);
 
   // Handle ready button click
   const handleReadyClick = () => {
@@ -88,9 +67,12 @@ export default function LobbyPhase({
     onReadyChange(newReadyState);
   };
 
-  // Check if position is available
+  // Improved function to check if a position is available
   const isPositionAvailable = (pos: string) => {
-    return !players.some((p) => p.position === pos);
+    // A position is available if:
+    // 1. No player is currently in that position, or
+    // 2. The current user is already in that position
+    return !players.some((p) => p.position === pos) || position === pos;
   };
 
   // Check if all team players are ready
@@ -102,6 +84,14 @@ export default function LobbyPhase({
   // Check if player is on a team (not spectator)
   const isOnTeam = position !== "spectator";
 
+  // Handle position change with ready state reset
+  const handlePositionChange = (newPosition: string) => {
+    if (isPositionAvailable(newPosition) || position === newPosition) {
+      onPositionChange(newPosition);
+      // Ready state will be reset in the useEffect when position changes
+    }
+  };
+
   // Generate team slots based on game type
   const renderTeamSlots = () => {
     const slots = [];
@@ -112,23 +102,20 @@ export default function LobbyPhase({
     for (let i = 1; i <= positionsPerTeam; i++) {
       const pos = `blue${i}`;
       const player = players.find((p) => p.position === pos);
+      const isCurrentPlayer = position === pos;
 
       slots.push(
         <div
           key={pos}
           className={`p-4 rounded-md mb-2 cursor-pointer
             ${
-              position === pos ? "bg-blue-700" : "bg-blue-900 hover:bg-blue-800"
+              isCurrentPlayer ? "bg-blue-700" : "bg-blue-900 hover:bg-blue-800"
             }`}
-          onClick={() => {
-            if (isPositionAvailable(pos) || position === pos) {
-              onPositionChange(pos);
-            }
-          }}
+          onClick={() => handlePositionChange(pos)}
         >
           <div className="flex justify-between items-center">
             <span className="font-medium">{is5v5 ? `블루 ${i}` : "블루"}</span>
-            {player?.isReady && (
+            {(player?.isReady || (isCurrentPlayer && isReady)) && (
               <span className="text-green-400 text-sm">준비완료</span>
             )}
           </div>
@@ -143,21 +130,18 @@ export default function LobbyPhase({
     for (let i = 1; i <= positionsPerTeam; i++) {
       const pos = `red${i}`;
       const player = players.find((p) => p.position === pos);
+      const isCurrentPlayer = position === pos;
 
       slots.push(
         <div
           key={pos}
           className={`p-4 rounded-md mb-2 cursor-pointer
-            ${position === pos ? "bg-red-700" : "bg-red-900 hover:bg-red-800"}`}
-          onClick={() => {
-            if (isPositionAvailable(pos) || position === pos) {
-              onPositionChange(pos);
-            }
-          }}
+            ${isCurrentPlayer ? "bg-red-700" : "bg-red-900 hover:bg-red-800"}`}
+          onClick={() => handlePositionChange(pos)}
         >
           <div className="flex justify-between items-center">
             <span className="font-medium">{is5v5 ? `레드 ${i}` : "레드"}</span>
-            {player?.isReady && (
+            {(player?.isReady || (isCurrentPlayer && isReady)) && (
               <span className="text-green-400 text-sm">준비완료</span>
             )}
           </div>
