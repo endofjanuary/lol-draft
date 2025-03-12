@@ -10,6 +10,7 @@ interface Player {
   nickname: string;
   position: string;
   isReady: boolean;
+  isHost: boolean; // Added isHost field to match the API response
 }
 
 interface GameInfo {
@@ -29,7 +30,7 @@ interface GameInfo {
     redScore: number;
     currentSet: number;
   };
-  clients: Player[]; // Added clients array to the interface
+  clients: Player[]; // Array of players with isHost property
 }
 
 export default function GamePage() {
@@ -131,6 +132,16 @@ export default function GamePage() {
       const data = await response.json();
       setGameInfo(data);
       console.log("Game info:", data);
+
+      // Update host status based on game data
+      if (data.clients && nickname) {
+        const currentPlayer = data.clients.find(
+          (p: Player) => p.nickname === nickname
+        );
+        if (currentPlayer) {
+          setIsHost(currentPlayer.isHost);
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch game info:", error);
       setError("게임 정보를 불러오는데 실패했습니다.");
@@ -161,8 +172,9 @@ export default function GamePage() {
             setPosition(response.data.position);
           }
 
-          if (response.data?.isHost) {
-            setIsHost(true);
+          // Set initial host status from response
+          if (response.data?.isHost !== undefined) {
+            setIsHost(response.data.isHost);
           }
 
           // Fetch game info after joining

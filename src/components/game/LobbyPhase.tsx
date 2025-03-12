@@ -17,6 +17,7 @@ interface Player {
   nickname: string;
   position: string;
   isReady: boolean;
+  isHost: boolean; // Added isHost field to match API response
 }
 
 interface LobbyPhaseProps {
@@ -24,7 +25,7 @@ interface LobbyPhaseProps {
   gameId: string;
   position: string;
   isHost: boolean;
-  players: Player[]; // Added players prop to receive directly from parent
+  players: Player[]; // Now includes isHost property
   onPositionChange: (position: string) => void;
   onReadyChange: (isReady: boolean) => void;
   onStartDraft: () => void;
@@ -35,7 +36,7 @@ export default function LobbyPhase({
   gameId,
   position,
   isHost,
-  players, // Add players to component parameters
+  players,
   onPositionChange,
   onReadyChange,
   onStartDraft,
@@ -103,6 +104,7 @@ export default function LobbyPhase({
       const pos = `blue${i}`;
       const player = players.find((p) => p.position === pos);
       const isCurrentPlayer = position === pos;
+      const isPlayerHost = player?.isHost || false; // Check if this player is the host
 
       slots.push(
         <div
@@ -114,7 +116,10 @@ export default function LobbyPhase({
           onClick={() => handlePositionChange(pos)}
         >
           <div className="flex justify-between items-center">
-            <span className="font-medium">{is5v5 ? `블루 ${i}` : "블루"}</span>
+            <span className="font-medium">
+              {is5v5 ? `블루 ${i}` : "블루"}
+              {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
+            </span>
             {(player?.isReady || (isCurrentPlayer && isReady)) && (
               <span className="text-green-400 text-sm">준비완료</span>
             )}
@@ -131,6 +136,7 @@ export default function LobbyPhase({
       const pos = `red${i}`;
       const player = players.find((p) => p.position === pos);
       const isCurrentPlayer = position === pos;
+      const isPlayerHost = player?.isHost || false; // Check if this player is the host
 
       slots.push(
         <div
@@ -140,7 +146,10 @@ export default function LobbyPhase({
           onClick={() => handlePositionChange(pos)}
         >
           <div className="flex justify-between items-center">
-            <span className="font-medium">{is5v5 ? `레드 ${i}` : "레드"}</span>
+            <span className="font-medium">
+              {is5v5 ? `레드 ${i}` : "레드"}
+              {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
+            </span>
             {(player?.isReady || (isCurrentPlayer && isReady)) && (
               <span className="text-green-400 text-sm">준비완료</span>
             )}
@@ -203,9 +212,12 @@ export default function LobbyPhase({
                     players.find((p) => p.position === position)?.nickname
                     ? "bg-purple-700"
                     : "bg-gray-700"
-                }`}
+                } flex items-center gap-1`}
               >
                 {spectator.nickname}
+                {spectator.isHost && (
+                  <span className="text-yellow-400 ml-1">👑</span>
+                )}
               </div>
             ))}
           {position !== "spectator" && (
