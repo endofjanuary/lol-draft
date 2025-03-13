@@ -21,10 +21,10 @@ const CreateGameForm = () => {
     gameName: "",
     blueTeamName: "",
     redTeamName: "",
-    draftMode: "",
-    playerMode: "5v5", // Default to 5v5
-    tournamentSet: "",
-    timerSetting: "",
+    draftMode: "tournament", // Default to tournament
+    playerMode: "1v1", // Already set to 5v5
+    tournamentSet: "bo1", // Default to bo5
+    timerSetting: "unlimited", // Default to limited
     globalBans: [] as string[],
     tournamentImage: null,
   });
@@ -134,10 +134,10 @@ const CreateGameForm = () => {
       // Map form data to API request format
       const requestBody = {
         version: formData.patchVersion,
-        draftType: formData.draftMode || "tournament", // Default to tournament if not selected
-        playerType: formData.playerMode || "5v5", // Use selected player mode
-        matchFormat: formData.tournamentSet || "bo3", // Default to bo3 if not selected
-        timeLimit: formData.timerSetting === "limited", // true if limited, false if unlimited
+        draftType: formData.draftMode, // No need for fallback now
+        playerType: formData.playerMode,
+        matchFormat: formData.tournamentSet, // No need for fallback now
+        timeLimit: formData.timerSetting === "limited",
         // Optional fields could be added here
         teamNames: {
           blue: formData.blueTeamName || "블루팀",
