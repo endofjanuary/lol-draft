@@ -22,6 +22,7 @@ const CreateGameForm = () => {
     blueTeamName: "",
     redTeamName: "",
     draftMode: "",
+    playerMode: "5v5", // Default to 5v5
     tournamentSet: "",
     timerSetting: "",
     globalBans: [] as string[],
@@ -96,6 +97,13 @@ const CreateGameForm = () => {
     });
   };
 
+  const handlePlayerModeSelection = (mode: string) => {
+    setFormData({
+      ...formData,
+      playerMode: mode,
+    });
+  };
+
   const handleSetSelection = (set: string) => {
     setFormData({
       ...formData,
@@ -127,7 +135,7 @@ const CreateGameForm = () => {
       const requestBody = {
         version: formData.patchVersion,
         draftType: formData.draftMode || "tournament", // Default to tournament if not selected
-        playerType: "5v5", // Currently hardcoded as 5v5
+        playerType: formData.playerMode || "5v5", // Use selected player mode
         matchFormat: formData.tournamentSet || "bo3", // Default to bo3 if not selected
         timeLimit: formData.timerSetting === "limited", // true if limited, false if unlimited
         // Optional fields could be added here
@@ -273,6 +281,48 @@ const CreateGameForm = () => {
                 className="w-full p-2 rounded-md bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="레드팀 이름을 입력하세요"
               />
+            </div>
+          </div>
+
+          {/* Player Mode */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">
+              플레이어 모드 선택
+            </label>
+            <div className="flex flex-wrap gap-4">
+              <button
+                type="button"
+                onClick={() => handlePlayerModeSelection("solo")}
+                className={`px-4 py-2 rounded-md border ${
+                  formData.playerMode === "solo"
+                    ? "bg-blue-600 border-blue-400"
+                    : "bg-gray-800 border-gray-600 hover:bg-gray-700"
+                }`}
+              >
+                솔로
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePlayerModeSelection("1v1")}
+                className={`px-4 py-2 rounded-md border ${
+                  formData.playerMode === "1v1"
+                    ? "bg-blue-600 border-blue-400"
+                    : "bg-gray-800 border-gray-600 hover:bg-gray-700"
+                }`}
+              >
+                1v1
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePlayerModeSelection("5v5")}
+                className={`px-4 py-2 rounded-md border ${
+                  formData.playerMode === "5v5"
+                    ? "bg-blue-600 border-blue-400"
+                    : "bg-gray-800 border-gray-600 hover:bg-gray-700"
+                }`}
+              >
+                5v5
+              </button>
             </div>
           </div>
 
