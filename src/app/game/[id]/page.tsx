@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import NicknameModal from "@/components/game/NicknameModal";
 import LobbyPhase from "@/components/game/LobbyPhase";
+import DraftPhase from "@/components/game/DraftPhase";
 
 interface Player {
   nickname: string;
@@ -20,15 +21,13 @@ interface GameInfo {
   playerType: string;
   draftType: string;
   matchFormat: string;
-  teamNames: {
-    blue: string;
-    red: string;
-  };
   status: {
     phase: number;
     blueScore: number;
     redScore: number;
     currentSet: number;
+    blueTeamName: string; // Updated according to API docs
+    redTeamName: string; // Updated according to API docs
   };
   clients: Player[]; // Array of players with isHost property
 }
@@ -237,6 +236,42 @@ export default function GamePage() {
     });
   };
 
+  // Handle champion selection
+  const handleSelectChampion = (champion: string) => {
+    if (!socket) return;
+
+    // Validate the champion before sending
+    if (!champion || typeof champion !== "string" || champion.trim() === "") {
+      setError("유효한 챔피언을 선택해주세요.");
+      return;
+    }
+
+    console.log(`Sending champion selection: ${champion}`); // Debug log
+
+    socket.emit("select_champion", { champion }, (response: any) => {
+      console.log("Selection response:", response); // Debug log
+      if (response.status !== "success") {
+        setError(response.message || "챔피언 선택에 실패했습니다.");
+      }
+    });
+  };
+
+  // Handle selection confirmation
+  const handleConfirmSelection = () => {
+    if (!socket) return;
+
+    console.log("Sending selection confirmation"); // Debug log
+
+    socket.emit("confirm_selection", {}, (response: any) => {
+      console.log("Confirmation response:", response); // Debug log
+      if (response.status !== "success") {
+        setError(response.message || "선택 확정에 실패했습니다.");
+      } else {
+        console.log("Selection confirmed successfully");
+      }
+    });
+  };
+
   // Show loading state if not connected
   if (!isConnected) {
     return (
@@ -306,13 +341,15 @@ export default function GamePage() {
         />
       );
     } else if (phase >= 1 && phase <= 20) {
-      // Draft phase (to be implemented later)
+      // Draft phase
       return (
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-gray-400">
-            밴픽 화면은 현재 개발 중입니다. (Phase: {phase})
-          </p>
-        </div>
+        <DraftPhase
+          gameInfo={gameInfo}
+          nickname={nickname}
+          position={position}
+          onSelectChampion={handleSelectChampion}
+          onConfirmSelection={handleConfirmSelection}
+        />
       );
     } else if (phase === 21) {
       // Result phase (to be implemented later)
