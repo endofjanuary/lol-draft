@@ -134,6 +134,26 @@ export default function CreateGame() {
     setApiError(null);
 
     try {
+      // For solo mode, store config in localStorage and navigate to solo page
+      if (formData.playerMode === "solo") {
+        const soloGameConfig = {
+          version: formData.patchVersion,
+          draftType: formData.draftMode,
+          blueTeamName: formData.blueTeamName || "블루팀",
+          redTeamName: formData.redTeamName || "레드팀",
+          globalBans: formData.globalBans,
+          timerSetting: formData.timerSetting === "limited",
+        };
+
+        // Store config in localStorage
+        localStorage.setItem("soloGameConfig", JSON.stringify(soloGameConfig));
+
+        // Navigate to solo game page
+        router.push("/solo");
+        return;
+      }
+
+      // For multiplayer modes, continue with server request
       const requestBody = {
         version: formData.patchVersion,
         draftType: formData.draftMode,
