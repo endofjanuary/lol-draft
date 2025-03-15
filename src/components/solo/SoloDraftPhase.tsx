@@ -211,7 +211,7 @@ export default function SoloDraftPhase({
     ];
   }, [bluePicks, redPicks]);
 
-  // Filter champions based on search term, tag filter, and banned/picked status
+  // Filter champions based on search term and tag filter only (don't exclude banned/picked)
   const filteredChampions = useMemo(() => {
     return champions.filter((champion) => {
       // Filter by search term
@@ -227,30 +227,26 @@ export default function SoloDraftPhase({
         return false;
       }
 
-      // Filter out banned champions
-      if (allBannedChampions.includes(champion.id)) {
-        return false;
-      }
-
-      // Filter out picked champions
-      if (allPickedChampions.includes(champion.id)) {
-        return false;
-      }
-
+      // Don't filter out banned or picked champions anymore
       return true;
     });
-  }, [
-    champions,
-    searchTerm,
-    tagFilter,
-    allBannedChampions,
-    allPickedChampions,
-  ]);
+  }, [champions, searchTerm, tagFilter]);
+
+  // Check if champion is banned or picked
+  const isChampionUnavailable = (championId: string) => {
+    return (
+      allBannedChampions.includes(championId) ||
+      allPickedChampions.includes(championId)
+    );
+  };
 
   // Handle champion selection
   const handleChampionClick = (championId: string) => {
-    setSelectedChampion(championId);
-    onSelectChampion(championId);
+    // Only allow selection of available champions
+    if (!isChampionUnavailable(championId)) {
+      setSelectedChampion(championId);
+      onSelectChampion(championId);
+    }
   };
 
   // Handle confirm button click
@@ -420,28 +416,39 @@ export default function SoloDraftPhase({
 
               {/* Champions grid */}
               <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-1 mb-4 max-h-[400px] overflow-y-auto p-2">
-                {filteredChampions.map((champion) => (
-                  <div
-                    key={champion.id}
-                    className={`relative cursor-pointer transition-all ${
-                      selectedChampion === champion.id
-                        ? "ring-2 ring-yellow-400"
-                        : ""
-                    }`}
-                    onClick={() => handleChampionClick(champion.id)}
-                  >
-                    <Image
-                      src={`https://ddragon.leagueoflegends.com/cdn/${gameInfo.version}/img/champion/${champion.id}.png`}
-                      alt={champion.name}
-                      width={60}
-                      height={60}
-                      className="w-full rounded-md"
-                    />
-                    <p className="text-xs text-center mt-1 truncate">
-                      {champion.name}
-                    </p>
-                  </div>
-                ))}
+                {filteredChampions.map((champion) => {
+                  const isUnavailable = isChampionUnavailable(champion.id);
+                  return (
+                    <div
+                      key={champion.id}
+                      className={`relative cursor-pointer transition-all ${
+                        isUnavailable ? "cursor-not-allowed" : "hover:scale-105"
+                      } ${
+                        selectedChampion === champion.id
+                          ? "ring-2 ring-yellow-400"
+                          : ""
+                      }`}
+                      onClick={() => handleChampionClick(champion.id)}
+                    >
+                      <Image
+                        src={`https://ddragon.leagueoflegends.com/cdn/${gameInfo.version}/img/champion/${champion.id}.png`}
+                        alt={champion.name}
+                        width={60}
+                        height={60}
+                        className={`w-full rounded-md ${
+                          isUnavailable ? "grayscale opacity-40" : ""
+                        }`}
+                      />
+                      <p
+                        className={`text-xs text-center mt-1 truncate ${
+                          isUnavailable ? "text-gray-500" : ""
+                        }`}
+                      >
+                        {champion.name}
+                      </p>
+                    </div>
+                  );
+                })}
 
                 {filteredChampions.length === 0 && (
                   <div className="col-span-full text-center py-8 text-gray-400">
