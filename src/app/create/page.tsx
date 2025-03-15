@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import dynamic from "next/dynamic";
 
 interface Champion {
   id: string;
@@ -13,18 +12,17 @@ interface Champion {
   };
 }
 
-// Client component with no SSR
-const CreateGameForm = () => {
+export default function CreateGame() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     patchVersion: "",
     gameName: "",
     blueTeamName: "",
     redTeamName: "",
-    draftMode: "tournament", // Default to tournament
-    playerMode: "1v1", // Already set to 5v5
-    tournamentSet: "bo1", // Default to bo5
-    timerSetting: "unlimited", // Default to limited
+    draftMode: "tournament",
+    playerMode: "1v1",
+    tournamentSet: "bo1",
+    timerSetting: "unlimited",
     globalBans: [] as string[],
     tournamentImage: null,
   });
@@ -35,30 +33,35 @@ const CreateGameForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Fetch patch versions on component mount
-  useEffect(() => {
-    const fetchVersions = async () => {
-      try {
-        const response = await fetch(
-          "https://ddragon.leagueoflegends.com/api/versions.json"
-        );
-        const data = await response.json();
-        // Get the latest 5 versions
-        const latestVersions = data.slice(0, 5);
-        setVersions(latestVersions);
-        // Set default to latest version
-        if (latestVersions.length > 0) {
-          setFormData((prev) => ({ ...prev, patchVersion: latestVersions[0] }));
-        }
-      } catch (error) {
-        console.error("Failed to fetch versions:", error);
-      }
-    };
+  // 기존 코드의 모든 함수와 로직 유지
+  // ...
 
+  // 기존 코드에서 CreateGameForm의 내용을 그대로 가져옴
+  const fetchVersions = async () => {
+    try {
+      const response = await fetch(
+        "https://ddragon.leagueoflegends.com/api/versions.json"
+      );
+      const data = await response.json();
+      // Get the latest 5 versions
+      const latestVersions = data.slice(0, 5);
+      setVersions(latestVersions);
+      // Set default to latest version
+      if (latestVersions.length > 0) {
+        setFormData((prev) => ({ ...prev, patchVersion: latestVersions[0] }));
+      }
+    } catch (error) {
+      console.error("Failed to fetch versions:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchVersions();
   }, []);
 
-  // Fetch champions when needed
+  // 나머지 함수들도 모두 동일하게 유지
+  // fetchChampions, handleInputChange, handleModeSelection 등...
+
   const fetchChampions = async () => {
     if (!formData.patchVersion) return;
 
@@ -131,14 +134,12 @@ const CreateGameForm = () => {
     setApiError(null);
 
     try {
-      // Map form data to API request format
       const requestBody = {
         version: formData.patchVersion,
-        draftType: formData.draftMode, // No need for fallback now
+        draftType: formData.draftMode,
         playerType: formData.playerMode,
-        matchFormat: formData.tournamentSet, // No need for fallback now
+        matchFormat: formData.tournamentSet,
         timeLimit: formData.timerSetting === "limited",
-        // Optional fields could be added here
         teamNames: {
           blue: formData.blueTeamName || "블루팀",
           red: formData.redTeamName || "레드팀",
@@ -149,7 +150,6 @@ const CreateGameForm = () => {
 
       console.log("Creating game with options:", requestBody);
 
-      // Call the server API to create the game
       const response = await fetch("http://localhost:8000/games", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,7 +164,6 @@ const CreateGameForm = () => {
       const gameData = await response.json();
       console.log("Game created successfully:", gameData);
 
-      // Navigate to the game page with the newly created game code
       router.push(`/game/${gameData.gameCode}`);
     } catch (error) {
       console.error("Failed to create game:", error);
@@ -203,8 +202,10 @@ const CreateGameForm = () => {
     });
   };
 
+  // 기존 렌더링 로직 그대로 유지
   return (
     <div className="flex flex-col items-center min-h-screen p-8 bg-[#030C28] text-white">
+      {/* 기존 JSX 코드 유지 */}
       <main className="flex flex-col items-center max-w-3xl w-full py-8">
         <h1 className="text-3xl font-bold mb-4 text-center">
           리그 오브 레전드
@@ -613,18 +614,4 @@ const CreateGameForm = () => {
       )}
     </div>
   );
-};
-
-// Dynamically load the form with ssr disabled to prevent hydration issues
-const ClientOnlyCreateGame = dynamic(() => Promise.resolve(CreateGameForm), {
-  ssr: false,
-  loading: () => (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#030C28] text-white">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  ),
-});
-
-export default function CreateGame() {
-  return <ClientOnlyCreateGame />;
 }
