@@ -163,6 +163,10 @@ export default function SoloDraftPhase({
 
         // Convert champion object to array
         const champArray = Object.values(data.data) as ChampionData[];
+
+        // Sort by Korean name (한글 이름 기준 정렬)
+        champArray.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
         setChampions(champArray);
       } catch (err) {
         setError(
