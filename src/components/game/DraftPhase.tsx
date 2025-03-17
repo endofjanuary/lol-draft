@@ -186,11 +186,109 @@ export default function DraftPhase({
     }
   }, [gameInfo.status.phaseData, gameInfo.status.phase, champions]);
 
-  // Determine if it's the current player's turn
-  const isPlayerTurn = position === currentTurnPosition;
+  // Determine if it's the current player's turn based on game mode, phase, and position
+  const isPlayerTurn = () => {
+    const phase = gameInfo.status.phase;
+    const playerType = gameInfo.settings.playerType;
+    const playerTeam = position.startsWith("blue") ? "blue" : "red";
+    const playerNumber = parseInt(
+      position.replace("blue", "").replace("red", ""),
+      10
+    );
+
+    // Spectator can never take actions
+    if (position === "spectator") return false;
+
+    // In 1v1 mode, each player handles all picks and bans for their team
+    if (playerType === "1v1") {
+      // Phase 1-6: First ban phase (blue→red→blue→red→blue→red)
+      // Phase 13-16: Second ban phase (red→blue→red→blue)
+      if ((phase >= 1 && phase <= 6) || (phase >= 13 && phase <= 16)) {
+        // Ban phase - check if it's this team's turn to ban
+        const isBlueTeamTurn =
+          (phase >= 1 && phase <= 6 && phase % 2 === 1) || // First ban phase
+          (phase >= 13 && phase <= 16 && phase % 2 === 0); // Second ban phase
+
+        return (
+          (isBlueTeamTurn && playerTeam === "blue") ||
+          (!isBlueTeamTurn && playerTeam === "red")
+        );
+      }
+
+      // Phase 7-12: First pick phase and Phase 17-20: Second pick phase
+      if ((phase >= 7 && phase <= 12) || (phase >= 17 && phase <= 20)) {
+        // Pick phase
+        // First pick phase (7-12): blue→red→red→blue→blue→red
+        if (phase >= 7 && phase <= 12) {
+          if (phase === 7) return playerTeam === "blue";
+          if (phase === 8 || phase === 9) return playerTeam === "red";
+          if (phase === 10 || phase === 11) return playerTeam === "blue";
+          if (phase === 12) return playerTeam === "red";
+        }
+
+        // Second pick phase (17-20): red→blue→blue→red
+        if (phase >= 17 && phase <= 20) {
+          if (phase === 17) return playerTeam === "red";
+          if (phase === 18 || phase === 19) return playerTeam === "blue";
+          if (phase === 20) return playerTeam === "red";
+        }
+      }
+    }
+
+    // In 5v5 mode
+    if (playerType === "5v5") {
+      // Ban phases - only player 1 from each team can ban
+      if ((phase >= 1 && phase <= 6) || (phase >= 13 && phase <= 16)) {
+        // Only player number 1 from each team can ban
+        if (playerNumber !== 1) return false;
+
+        // First ban phase (1-6): Blue→Red→Blue→Red→Blue→Red
+        if (phase >= 1 && phase <= 6) {
+          return (
+            (phase % 2 === 1 && playerTeam === "blue") ||
+            (phase % 2 === 0 && playerTeam === "red")
+          );
+        }
+
+        // Second ban phase (13-16): Red→Blue→Red→Blue
+        if (phase >= 13 && phase <= 16) {
+          return (
+            (phase % 2 === 1 && playerTeam === "red") ||
+            (phase % 2 === 0 && playerTeam === "blue")
+          );
+        }
+      }
+
+      // Pick phases - each player has their own position
+      if ((phase >= 7 && phase <= 12) || (phase >= 17 && phase <= 20)) {
+        // Map phase to the player number that should pick
+        let playerTurn;
+
+        // First pick phase (7-12): blue1→red1→red2→blue2→blue3→red3
+        if (phase === 7) playerTurn = "blue1";
+        else if (phase === 8) playerTurn = "red1";
+        else if (phase === 9) playerTurn = "red2";
+        else if (phase === 10) playerTurn = "blue2";
+        else if (phase === 11) playerTurn = "blue3";
+        else if (phase === 12) playerTurn = "red3";
+        // Second pick phase (17-20): red4→blue4→blue5→red5
+        else if (phase === 17) playerTurn = "red4";
+        else if (phase === 18) playerTurn = "blue4";
+        else if (phase === 19) playerTurn = "blue5";
+        else if (phase === 20) playerTurn = "red5";
+
+        return position === playerTurn;
+      }
+    }
+
+    return false;
+  };
+
+  // Store the current player's turn status
+  const playersTurn = isPlayerTurn();
 
   const handleChampionClick = (championId: string) => {
-    if (!isPlayerTurn) return; // Only allow selection during player's turn
+    if (!playersTurn) return; // Only allow selection during player's turn
 
     // Don't allow selecting banned or picked champions
     if (bannedChampions.includes(championId)) return;
@@ -204,7 +302,7 @@ export default function DraftPhase({
 
   const handleConfirmSelection = () => {
     // Add more validation to ensure we have a valid champion ID
-    if (!isPlayerTurn) {
+    if (!playersTurn) {
       console.warn("Not your turn to select");
       return;
     }
@@ -343,7 +441,7 @@ export default function DraftPhase({
       <div className="text-center mb-4">
         <h2 className="text-2xl font-bold">{getPhaseDescription()}</h2>
         <p className="text-lg">
-          {isPlayerTurn
+          {playersTurn
             ? `Your turn to ${getCurrentAction()}`
             : `Waiting for ${
                 currentTurnPosition.startsWith("blue") ? "Blue" : "Red"
@@ -437,7 +535,7 @@ export default function DraftPhase({
                       ? "ring-2 ring-yellow-400"
                       : ""
                   }
-                  ${isPlayerTurn ? "hover:ring-1 hover:ring-white" : ""}
+                  ${playersTurn ? "hover:ring-1 hover:ring-white" : ""}
                 `}
                 title={champion.name}
               >
@@ -453,7 +551,7 @@ export default function DraftPhase({
           </div>
 
           {/* Selection UI for player's turn */}
-          {isPlayerTurn && (
+          {playersTurn && (
             <div className="mt-4 flex flex-col items-center">
               <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-800 mb-2">
                 {selectedChampion && (
