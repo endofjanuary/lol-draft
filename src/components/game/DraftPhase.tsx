@@ -29,13 +29,14 @@ export default function DraftPhase({
   const [isLoadingChampions, setIsLoadingChampions] = useState(true);
   const [championError, setChampionError] = useState<string | null>(null);
 
-  // Mock data for demonstration - would come from API/server in real app
-  const [currentTurnPosition, setCurrentTurnPosition] =
-    useState<string>("blue1");
+  // States for selected champions
   const [blueBans, setBlueBans] = useState<string[]>([]);
   const [redBans, setRedBans] = useState<string[]>([]);
   const [bluePicks, setBluePicks] = useState<{ [key: string]: string }>({});
   const [redPicks, setRedPicks] = useState<{ [key: string]: string }>({});
+
+  const [currentTurnPosition, setCurrentTurnPosition] =
+    useState<string>("blue1");
 
   // Fetch champion data from Riot API
   useEffect(() => {
@@ -73,9 +74,6 @@ export default function DraftPhase({
     fetchChampions();
   }, [gameInfo.settings.version]);
 
-  // Determine if it's the current player's turn
-  const isPlayerTurn = position === currentTurnPosition;
-
   // Set the current turn position based on the phase
   useEffect(() => {
     // This is a simplified mapping of phase to position
@@ -106,82 +104,90 @@ export default function DraftPhase({
     }
   }, [gameInfo.status.phase]);
 
-  // Mock data setup for demonstration
+  // Parse game data and update UI when phaseData changes
   useEffect(() => {
+    // If no champions data or no phase data, return
     if (champions.length === 0) return;
 
     const phase = gameInfo.status.phase;
+    const phaseData = gameInfo.status.phaseData || [];
 
-    // Update banned champions based on phase
-    const mockBannedIds = [];
-    for (let i = 1; i < phase && i <= 6 && i < champions.length; i++) {
-      mockBannedIds.push(champions[i - 1].id);
-    }
+    // Process real selections from phaseData
+    const actualBlueBans: string[] = [];
+    const actualRedBans: string[] = [];
+    const actualBluePicks: { [key: string]: string } = {};
+    const actualRedPicks: { [key: string]: string } = {};
 
-    // Add second ban phase
-    if (phase > 12) {
-      for (
-        let i = 13;
-        i < phase && i <= 16 && i + 6 - 13 < champions.length;
-        i++
-      ) {
-        mockBannedIds.push(champions[i + 6 - 13].id);
-      }
-    }
-
-    setBannedChampions(mockBannedIds);
-
-    // Update blue and red bans
-    setBlueBans(mockBannedIds.filter((_, i) => i % 2 === 0).slice(0, 5));
-    setRedBans(mockBannedIds.filter((_, i) => i % 2 === 1).slice(0, 5));
-
-    // Update picks based on phase
-    const mockBluePicksObj: { [key: string]: string } = {};
-    const mockRedPicksObj: { [key: string]: string } = {};
-
-    // Only add mock picks if we have enough champions
-    if (champions.length >= 30) {
-      if (phase >= 7) {
-        mockBluePicksObj["blue1"] = champions[20].id; // For phase 7
-      }
-      if (phase >= 8) {
-        mockRedPicksObj["red1"] = champions[21].id; // For phase 8
-      }
-      if (phase >= 9) {
-        mockRedPicksObj["red2"] = champions[22].id; // For phase 9
-      }
-      if (phase >= 10) {
-        mockBluePicksObj["blue2"] = champions[23].id; // For phase 10
-      }
-      if (phase >= 11) {
-        mockBluePicksObj["blue3"] = champions[24].id; // For phase 11
-      }
-      if (phase >= 12) {
-        mockRedPicksObj["red3"] = champions[25].id; // For phase 12
-      }
-
-      // Second pick phase
-      if (phase >= 17) {
-        mockRedPicksObj["red4"] = champions[26].id; // For phase 17
-      }
-      if (phase >= 18) {
-        mockBluePicksObj["blue4"] = champions[27].id; // For phase 18
-      }
-      if (phase >= 19) {
-        mockBluePicksObj["blue5"] = champions[28].id; // For phase 19
-      }
-      if (phase >= 20) {
-        mockRedPicksObj["red5"] = champions[29].id; // For phase 20
+    // Process each phase's data from gameInfo
+    // Note: phaseData[0] is empty (phase 0), phaseData[1] is for phase 1, etc.
+    for (
+      let phaseNum = 1;
+      phaseNum <= 20 && phaseNum < phaseData.length;
+      phaseNum++
+    ) {
+      const selection = phaseData[phaseNum];
+      if (selection && selection.trim() !== "") {
+        // First 6 phases are bans (alternating blue, red)
+        if (phaseNum <= 6) {
+          // Phase 1,3,5 are Blue bans
+          if (phaseNum % 2 === 1) {
+            actualBlueBans.push(selection);
+          }
+          // Phase 2,4,6 are Red bans
+          else {
+            actualRedBans.push(selection);
+          }
+        }
+        // Phases 7-12 are first pick phase
+        else if (phaseNum >= 7 && phaseNum <= 12) {
+          if (phaseNum === 7) actualBluePicks["blue1"] = selection;
+          else if (phaseNum === 8) actualRedPicks["red1"] = selection;
+          else if (phaseNum === 9) actualRedPicks["red2"] = selection;
+          else if (phaseNum === 10) actualBluePicks["blue2"] = selection;
+          else if (phaseNum === 11) actualBluePicks["blue3"] = selection;
+          else if (phaseNum === 12) actualRedPicks["red3"] = selection;
+        }
+        // Phases 13-16 are second ban phase (alternating red, blue)
+        else if (phaseNum >= 13 && phaseNum <= 16) {
+          // Phase 13,15 are Red bans
+          if (phaseNum % 2 === 1) {
+            actualRedBans.push(selection);
+          }
+          // Phase 14,16 are Blue bans
+          else {
+            actualBlueBans.push(selection);
+          }
+        }
+        // Phases 17-20 are second pick phase
+        else if (phaseNum >= 17 && phaseNum <= 20) {
+          if (phaseNum === 17) actualRedPicks["red4"] = selection;
+          else if (phaseNum === 18) actualBluePicks["blue4"] = selection;
+          else if (phaseNum === 19) actualBluePicks["blue5"] = selection;
+          else if (phaseNum === 20) actualRedPicks["red5"] = selection;
+        }
       }
     }
 
-    setBluePicks(mockBluePicksObj);
-    setRedPicks(mockRedPicksObj);
+    // Use real data
+    const bannedChampsList = [...actualBlueBans, ...actualRedBans];
+    setBannedChampions(bannedChampsList);
+    setBlueBans(actualBlueBans);
+    setRedBans(actualRedBans);
+    setBluePicks(actualBluePicks);
+    setRedPicks(actualRedPicks);
 
     // Combine all picked champions
-    const allPicks = { ...mockBluePicksObj, ...mockRedPicksObj };
+    const allPicks = { ...actualBluePicks, ...actualRedPicks };
     setPickedChampions(allPicks);
-  }, [gameInfo.status.phase, champions]);
+
+    // If we have real data for the current phase or in the past, reset selected champion
+    if (phase > 0 && phase < phaseData.length && phaseData[phase]) {
+      setSelectedChampion(null);
+    }
+  }, [gameInfo.status.phaseData, gameInfo.status.phase, champions]);
+
+  // Determine if it's the current player's turn
+  const isPlayerTurn = position === currentTurnPosition;
 
   const handleChampionClick = (championId: string) => {
     if (!isPlayerTurn) return; // Only allow selection during player's turn
