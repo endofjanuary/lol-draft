@@ -1,31 +1,13 @@
 import { useState, useEffect } from "react";
+import { GameInfo, Player } from "@/types/game"; // Import shared types
 
-interface GameInfo {
-  gameCode: string;
-  playerType: string;
-  teamNames?: {
-    blue?: string;
-    red?: string;
-  };
-  status: {
-    blueScore?: number;
-    redScore?: number;
-  };
-}
-
-interface Player {
-  nickname: string;
-  position: string;
-  isReady: boolean;
-  isHost: boolean; // Added isHost field to match API response
-}
-
+// Local props interface, now using the shared GameInfo type
 interface LobbyPhaseProps {
   gameInfo: GameInfo;
   gameId: string;
   position: string;
   isHost: boolean;
-  players: Player[]; // Now includes isHost property
+  players: Player[];
   onPositionChange: (position: string) => void;
   onReadyChange: (isReady: boolean) => void;
   onStartDraft: () => void;
@@ -96,7 +78,7 @@ export default function LobbyPhase({
   // Generate team slots based on game type
   const renderTeamSlots = () => {
     const slots = [];
-    const is5v5 = gameInfo.playerType === "5v5";
+    const is5v5 = gameInfo.settings.playerType === "5v5"; // Updated to use settings.playerType
     const positionsPerTeam = is5v5 ? 5 : 1;
 
     // Blue team slots
@@ -167,8 +149,8 @@ export default function LobbyPhase({
   return (
     <div className="container mx-auto p-4 py-8">
       <h1 className="text-2xl font-bold text-center mb-8">
-        {gameInfo.teamNames?.blue || "블루팀"} vs{" "}
-        {gameInfo.teamNames?.red || "레드팀"}
+        {gameInfo.status.blueTeamName || "블루팀"} vs{" "}
+        {gameInfo.status.redTeamName || "레드팀"}
       </h1>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -176,12 +158,13 @@ export default function LobbyPhase({
         <div className="w-full md:w-1/2">
           <h2 className="text-xl font-bold text-blue-400 mb-4">
             블루팀{" "}
-            <span className="text-white">
-              {gameInfo.status?.blueScore || 0}
-            </span>
+            <span className="text-white">{gameInfo.status.blueScore || 0}</span>
           </h2>
           <div>
-            {renderTeamSlots().slice(0, gameInfo.playerType === "5v5" ? 5 : 1)}
+            {renderTeamSlots().slice(
+              0,
+              gameInfo.settings.playerType === "5v5" ? 5 : 1
+            )}
           </div>
         </div>
 
@@ -189,10 +172,12 @@ export default function LobbyPhase({
         <div className="w-full md:w-1/2">
           <h2 className="text-xl font-bold text-red-400 mb-4">
             레드팀{" "}
-            <span className="text-white">{gameInfo.status?.redScore || 0}</span>
+            <span className="text-white">{gameInfo.status.redScore || 0}</span>
           </h2>
           <div>
-            {renderTeamSlots().slice(gameInfo.playerType === "5v5" ? 5 : 1)}
+            {renderTeamSlots().slice(
+              gameInfo.settings.playerType === "5v5" ? 5 : 1
+            )}
           </div>
         </div>
       </div>

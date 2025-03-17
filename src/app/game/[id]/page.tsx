@@ -6,31 +6,7 @@ import { io, Socket } from "socket.io-client";
 import NicknameModal from "@/components/game/NicknameModal";
 import LobbyPhase from "@/components/game/LobbyPhase";
 import DraftPhase from "@/components/game/DraftPhase";
-
-interface Player {
-  nickname: string;
-  position: string;
-  isReady: boolean;
-  isHost: boolean; // Added isHost field to match the API response
-}
-
-interface GameInfo {
-  gameCode: string;
-  version: string;
-  createdAt: number;
-  playerType: string;
-  draftType: string;
-  matchFormat: string;
-  status: {
-    phase: number;
-    blueScore: number;
-    redScore: number;
-    currentSet: number;
-    blueTeamName: string; // Updated according to API docs
-    redTeamName: string; // Updated according to API docs
-  };
-  clients: Player[]; // Array of players with isHost property
-}
+import { GameInfo, Player } from "@/types/game"; // Import from shared types
 
 export default function GamePage() {
   const { id } = useParams();
@@ -315,7 +291,7 @@ export default function GamePage() {
     }
 
     // Solo game (to be implemented later)
-    if (gameInfo.playerType === "single") {
+    if (gameInfo.settings.playerType === "single") {
       return (
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-gray-400">솔로 게임 기능은 현재 개발 중입니다.</p>

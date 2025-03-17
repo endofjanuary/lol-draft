@@ -1,26 +1,6 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
-
-interface ChampionData {
-  id: string;
-  name: string;
-  image: string;
-}
-
-interface GameInfo {
-  gameCode: string;
-  version: string;
-  playerType: string;
-  draftType: string;
-  status: {
-    phase: number;
-    blueScore: number;
-    redScore: number;
-    currentSet: number;
-    blueTeamName: string; // Updated according to API docs
-    redTeamName: string; // Updated according to API docs
-  };
-}
+import { GameInfo, ChampionData } from "@/types/game"; // Import from shared types
 
 interface DraftPhaseProps {
   gameInfo: GameInfo;
@@ -29,101 +9,6 @@ interface DraftPhaseProps {
   onSelectChampion: (champion: string) => void;
   onConfirmSelection: () => void;
 }
-
-// Mock champion data - in a real app, you would fetch this from an API
-const mockChampions: ChampionData[] = [
-  {
-    id: "aatrox",
-    name: "Aatrox",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Aatrox.png",
-  },
-  {
-    id: "ahri",
-    name: "Ahri",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Ahri.png",
-  },
-  {
-    id: "akali",
-    name: "Akali",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Akali.png",
-  },
-  {
-    id: "alistar",
-    name: "Alistar",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Alistar.png",
-  },
-  {
-    id: "amumu",
-    name: "Amumu",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Amumu.png",
-  },
-  {
-    id: "annie",
-    name: "Annie",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Annie.png",
-  },
-  {
-    id: "ashe",
-    name: "Ashe",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Ashe.png",
-  },
-  {
-    id: "aurelionsol",
-    name: "Aurelion Sol",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/AurelionSol.png",
-  },
-  {
-    id: "azir",
-    name: "Azir",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Azir.png",
-  },
-  {
-    id: "bard",
-    name: "Bard",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Bard.png",
-  },
-  {
-    id: "blitzcrank",
-    name: "Blitzcrank",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Blitzcrank.png",
-  },
-  {
-    id: "brand",
-    name: "Brand",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Brand.png",
-  },
-  {
-    id: "braum",
-    name: "Braum",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Braum.png",
-  },
-  {
-    id: "caitlyn",
-    name: "Caitlyn",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Caitlyn.png",
-  },
-  {
-    id: "camille",
-    name: "Camille",
-    image:
-      "https://ddragon.leagueoflegends.com/cdn/14.10.1/img/champion/Camille.png",
-  },
-  // Add more champions as needed
-];
 
 export default function DraftPhase({
   gameInfo,
@@ -137,8 +22,12 @@ export default function DraftPhase({
   const [pickedChampions, setPickedChampions] = useState<{
     [key: string]: string;
   }>({});
-  // Add a state to track if we've sent the selection to the server
   const [selectionSent, setSelectionSent] = useState(false);
+
+  // New state for storing champion data from Riot API
+  const [champions, setChampions] = useState<ChampionData[]>([]);
+  const [isLoadingChampions, setIsLoadingChampions] = useState(true);
+  const [championError, setChampionError] = useState<string | null>(null);
 
   // Mock data for demonstration - would come from API/server in real app
   const [currentTurnPosition, setCurrentTurnPosition] =
@@ -147,6 +36,42 @@ export default function DraftPhase({
   const [redBans, setRedBans] = useState<string[]>([]);
   const [bluePicks, setBluePicks] = useState<{ [key: string]: string }>({});
   const [redPicks, setRedPicks] = useState<{ [key: string]: string }>({});
+
+  // Fetch champion data from Riot API
+  useEffect(() => {
+    const fetchChampions = async () => {
+      try {
+        setIsLoadingChampions(true);
+
+        // Use the game version from gameInfo settings
+        const version = gameInfo.settings.version;
+        const language = "ko_KR"; // Set to Korean language, can be made configurable
+
+        const RIOT_BASE_URL = "https://ddragon.leagueoflegends.com";
+        const url = `${RIOT_BASE_URL}/cdn/${version}/data/${language}/champion.json`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch champions: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Convert the data object to an array of champions
+        const championsArray = Object.values(data.data) as ChampionData[];
+        setChampions(championsArray);
+      } catch (error) {
+        console.error("Error fetching champion data:", error);
+        setChampionError(
+          error instanceof Error ? error.message : "Failed to load champions"
+        );
+      } finally {
+        setIsLoadingChampions(false);
+      }
+    };
+
+    fetchChampions();
+  }, [gameInfo.settings.version]);
 
   // Determine if it's the current player's turn
   const isPlayerTurn = position === currentTurnPosition;
@@ -183,18 +108,24 @@ export default function DraftPhase({
 
   // Mock data setup for demonstration
   useEffect(() => {
+    if (champions.length === 0) return;
+
     const phase = gameInfo.status.phase;
 
     // Update banned champions based on phase
     const mockBannedIds = [];
-    for (let i = 1; i < phase && i <= 6; i++) {
-      mockBannedIds.push(mockChampions[i - 1].id);
+    for (let i = 1; i < phase && i <= 6 && i < champions.length; i++) {
+      mockBannedIds.push(champions[i - 1].id);
     }
 
     // Add second ban phase
     if (phase > 12) {
-      for (let i = 13; i < phase && i <= 16; i++) {
-        mockBannedIds.push(mockChampions[i + 6 - 13].id);
+      for (
+        let i = 13;
+        i < phase && i <= 16 && i + 6 - 13 < champions.length;
+        i++
+      ) {
+        mockBannedIds.push(champions[i + 6 - 13].id);
       }
     }
 
@@ -208,37 +139,40 @@ export default function DraftPhase({
     const mockBluePicksObj: { [key: string]: string } = {};
     const mockRedPicksObj: { [key: string]: string } = {};
 
-    if (phase >= 7) {
-      mockBluePicksObj["blue1"] = mockChampions[20].id; // For phase 7
-    }
-    if (phase >= 8) {
-      mockRedPicksObj["red1"] = mockChampions[21].id; // For phase 8
-    }
-    if (phase >= 9) {
-      mockRedPicksObj["red2"] = mockChampions[22].id; // For phase 9
-    }
-    if (phase >= 10) {
-      mockBluePicksObj["blue2"] = mockChampions[23].id; // For phase 10
-    }
-    if (phase >= 11) {
-      mockBluePicksObj["blue3"] = mockChampions[24].id; // For phase 11
-    }
-    if (phase >= 12) {
-      mockRedPicksObj["red3"] = mockChampions[25].id; // For phase 12
-    }
+    // Only add mock picks if we have enough champions
+    if (champions.length >= 30) {
+      if (phase >= 7) {
+        mockBluePicksObj["blue1"] = champions[20].id; // For phase 7
+      }
+      if (phase >= 8) {
+        mockRedPicksObj["red1"] = champions[21].id; // For phase 8
+      }
+      if (phase >= 9) {
+        mockRedPicksObj["red2"] = champions[22].id; // For phase 9
+      }
+      if (phase >= 10) {
+        mockBluePicksObj["blue2"] = champions[23].id; // For phase 10
+      }
+      if (phase >= 11) {
+        mockBluePicksObj["blue3"] = champions[24].id; // For phase 11
+      }
+      if (phase >= 12) {
+        mockRedPicksObj["red3"] = champions[25].id; // For phase 12
+      }
 
-    // Second pick phase
-    if (phase >= 17) {
-      mockRedPicksObj["red4"] = mockChampions[26].id; // For phase 17
-    }
-    if (phase >= 18) {
-      mockBluePicksObj["blue4"] = mockChampions[27].id; // For phase 18
-    }
-    if (phase >= 19) {
-      mockBluePicksObj["blue5"] = mockChampions[28].id; // For phase 19
-    }
-    if (phase >= 20) {
-      mockRedPicksObj["red5"] = mockChampions[29].id; // For phase 20
+      // Second pick phase
+      if (phase >= 17) {
+        mockRedPicksObj["red4"] = champions[26].id; // For phase 17
+      }
+      if (phase >= 18) {
+        mockBluePicksObj["blue4"] = champions[27].id; // For phase 18
+      }
+      if (phase >= 19) {
+        mockBluePicksObj["blue5"] = champions[28].id; // For phase 19
+      }
+      if (phase >= 20) {
+        mockRedPicksObj["red5"] = champions[29].id; // For phase 20
+      }
     }
 
     setBluePicks(mockBluePicksObj);
@@ -247,7 +181,7 @@ export default function DraftPhase({
     // Combine all picked champions
     const allPicks = { ...mockBluePicksObj, ...mockRedPicksObj };
     setPickedChampions(allPicks);
-  }, [gameInfo.status.phase]);
+  }, [gameInfo.status.phase, champions]);
 
   const handleChampionClick = (championId: string) => {
     if (!isPlayerTurn) return; // Only allow selection during player's turn
@@ -325,6 +259,12 @@ export default function DraftPhase({
     );
   };
 
+  // Get champion image URL from the champion ID
+  const getChampionImageUrl = (championId: string) => {
+    const version = gameInfo.settings.version;
+    return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${championId}.png`;
+  };
+
   const renderTeamSlot = (team: string, position: number) => {
     const key = `${team}${position}`;
     const championId = team === "blue" ? bluePicks[key] : redPicks[key];
@@ -333,7 +273,7 @@ export default function DraftPhase({
       <div className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden`}>
         {championId && (
           <Image
-            src={mockChampions.find((c) => c.id === championId)?.image || ""}
+            src={getChampionImageUrl(championId)}
             alt={championId}
             width={64}
             height={64}
@@ -353,7 +293,7 @@ export default function DraftPhase({
         {championId && (
           <div className="relative w-full h-full">
             <Image
-              src={mockChampions.find((c) => c.id === championId)?.image || ""}
+              src={getChampionImageUrl(championId)}
               alt={championId}
               width={40}
               height={40}
@@ -367,6 +307,29 @@ export default function DraftPhase({
       </div>
     );
   };
+
+  // Show loading state while fetching champion data
+  if (isLoadingChampions) {
+    return (
+      <div className="min-h-screen bg-[#030C28] text-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+        <p className="ml-3">챔피언 데이터를 불러오는 중입니다...</p>
+      </div>
+    );
+  }
+
+  // Show error state if champion data fetch failed
+  if (championError) {
+    return (
+      <div className="min-h-screen bg-[#030C28] text-white flex flex-col items-center justify-center">
+        <div className="text-red-500 text-xl mb-4">⚠️ 오류</div>
+        <p className="text-center max-w-md">{championError}</p>
+        <p className="text-center text-sm mt-4">
+          페이지를 새로고침하여 다시 시도해주세요.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#030C28] text-white p-4 flex flex-col">
@@ -388,10 +351,9 @@ export default function DraftPhase({
         <div className="w-full md:w-1/4 bg-blue-900 bg-opacity-20 rounded-lg p-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-blue-400">
-              {gameInfo.status.blueTeamName || "Blue Team"}{" "}
-              {/* Fixed reference to team name */}
+              {gameInfo.status.blueTeamName || "Blue Team"}
             </h3>
-            <span className="text-xl">{gameInfo.status.blueScore}</span>
+            <span className="text-xl">{gameInfo.status.blueScore || 0}</span>
           </div>
 
           {/* Blue Bans */}
@@ -406,10 +368,7 @@ export default function DraftPhase({
                   {blueBans[index] && (
                     <div className="relative w-full h-full">
                       <Image
-                        src={
-                          mockChampions.find((c) => c.id === blueBans[index])
-                            ?.image || ""
-                        }
+                        src={getChampionImageUrl(blueBans[index])}
                         alt={blueBans[index]}
                         width={40}
                         height={40}
@@ -456,7 +415,7 @@ export default function DraftPhase({
         <div className="w-full md:w-2/4 bg-gray-900 bg-opacity-30 rounded-lg p-4">
           <h3 className="text-lg font-bold mb-4">Select Champion</h3>
           <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
-            {mockChampions.map((champion) => (
+            {champions.map((champion) => (
               <div
                 key={champion.id}
                 onClick={() => handleChampionClick(champion.id)}
@@ -474,9 +433,10 @@ export default function DraftPhase({
                   }
                   ${isPlayerTurn ? "hover:ring-1 hover:ring-white" : ""}
                 `}
+                title={champion.name}
               >
                 <Image
-                  src={champion.image}
+                  src={getChampionImageUrl(champion.id)}
                   alt={champion.name}
                   width={64}
                   height={64}
@@ -492,10 +452,7 @@ export default function DraftPhase({
               <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-800 mb-2">
                 {selectedChampion && (
                   <Image
-                    src={
-                      mockChampions.find((c) => c.id === selectedChampion)
-                        ?.image || ""
-                    }
+                    src={getChampionImageUrl(selectedChampion)}
                     alt={selectedChampion}
                     width={64}
                     height={64}
@@ -525,10 +482,9 @@ export default function DraftPhase({
         <div className="w-full md:w-1/4 bg-red-900 bg-opacity-20 rounded-lg p-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-red-400">
-              {gameInfo.status.redTeamName || "Red Team"}{" "}
-              {/* Fixed reference to team name */}
+              {gameInfo.status.redTeamName || "Red Team"}
             </h3>
-            <span className="text-xl">{gameInfo.status.redScore}</span>
+            <span className="text-xl">{gameInfo.status.redScore || 0}</span>
           </div>
 
           {/* Red Bans */}
@@ -543,10 +499,7 @@ export default function DraftPhase({
                   {redBans[index] && (
                     <div className="relative w-full h-full">
                       <Image
-                        src={
-                          mockChampions.find((c) => c.id === redBans[index])
-                            ?.image || ""
-                        }
+                        src={getChampionImageUrl(redBans[index])}
                         alt={redBans[index]}
                         width={40}
                         height={40}
