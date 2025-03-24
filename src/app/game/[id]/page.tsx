@@ -6,7 +6,8 @@ import { io, Socket } from "socket.io-client";
 import NicknameModal from "@/components/game/NicknameModal";
 import LobbyPhase from "@/components/game/LobbyPhase";
 import DraftPhase from "@/components/game/DraftPhase";
-import { GameInfo, Player } from "@/types/game"; // Import from shared types
+import ResultPhase from "@/components/game/ResultPhase"; // Add this import
+import { GameInfo, Player } from "@/types/game";
 
 export default function GamePage() {
   const { id } = useParams();
@@ -248,6 +249,35 @@ export default function GamePage() {
     });
   };
 
+  // Handle game result confirmation
+  const handleConfirmResult = (winner: string) => {
+    if (!socket || !isHost) return;
+
+    socket.emit("confirm_result", { winner }, (response: any) => {
+      if (response.status !== "success") {
+        setError(response.message || "게임 결과 확정에 실패했습니다.");
+      } else {
+        console.log("Game result confirmed successfully");
+        // Fetch game info to update scores
+        fetchGameInfo();
+      }
+    });
+  };
+
+  // Handle moving to next game (in a series)
+  const handleNextGame = () => {
+    if (!socket || !isHost) return;
+
+    socket.emit("prepare_next_game", {}, (response: any) => {
+      if (response.status !== "success") {
+        setError(response.message || "다음 게임 준비에 실패했습니다.");
+      } else {
+        console.log("Next game preparation successful");
+        fetchGameInfo();
+      }
+    });
+  };
+
   // Show loading state if not connected
   if (!isConnected) {
     return (
@@ -328,11 +358,14 @@ export default function GamePage() {
         />
       );
     } else if (phase === 21) {
-      // Result phase (to be implemented later)
+      // Result phase
       return (
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-gray-400">결과 화면은 현재 개발 중입니다.</p>
-        </div>
+        <ResultPhase
+          gameInfo={gameInfo}
+          onConfirmResult={handleConfirmResult}
+          onNextGame={handleNextGame}
+          isHost={isHost}
+        />
       );
     }
 
