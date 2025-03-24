@@ -157,8 +157,7 @@ export default function LobbyPhase({
         {/* Blue Team Column */}
         <div className="w-full md:w-1/2">
           <h2 className="text-xl font-bold text-blue-400 mb-4">
-            블루팀{" "}
-            <span className="text-white">{gameInfo.status.blueScore || 0}</span>
+            블루팀 <span className="text-white">{gameInfo.blueScore || 0}</span>
           </h2>
           <div>
             {renderTeamSlots().slice(
@@ -171,8 +170,7 @@ export default function LobbyPhase({
         {/* Red Team Column */}
         <div className="w-full md:w-1/2">
           <h2 className="text-xl font-bold text-red-400 mb-4">
-            레드팀{" "}
-            <span className="text-white">{gameInfo.status.redScore || 0}</span>
+            레드팀 <span className="text-white">{gameInfo.redScore || 0}</span>
           </h2>
           <div>
             {renderTeamSlots().slice(

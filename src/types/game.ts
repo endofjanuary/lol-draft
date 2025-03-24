@@ -34,10 +34,11 @@ export interface GameInfo {
     lastUpdatedAt: number;
     phaseData: string[];
     setNumber: number; // Current set in the match
-    blueScore?: number; // Optional scores
-    redScore?: number;
+    // Scores removed from here as they are now at the top level
   };
   clients: Player[]; // Connected clients/players
+  blueScore?: number; // Now at top level
+  redScore?: number; // Now at top level
 }
 
 /**

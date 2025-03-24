@@ -457,7 +457,7 @@ export default function DraftPhase({
             <h3 className="text-xl font-bold text-blue-400">
               {gameInfo.status.blueTeamName || "Blue Team"}
             </h3>
-            <span className="text-xl">{gameInfo.status.blueScore || 0}</span>
+            <span className="text-xl">{gameInfo.blueScore || 0}</span>
           </div>
 
           {/* Blue Bans */}
@@ -588,7 +588,7 @@ export default function DraftPhase({
             <h3 className="text-xl font-bold text-red-400">
               {gameInfo.status.redTeamName || "Red Team"}
             </h3>
-            <span className="text-xl">{gameInfo.status.redScore || 0}</span>
+            <span className="text-xl">{gameInfo.redScore || 0}</span>
           </div>
 
           {/* Red Bans */}

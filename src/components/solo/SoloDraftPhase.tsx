@@ -17,13 +17,13 @@ interface GameInfo {
   draftType: string;
   status: {
     phase: number;
-    blueScore: number;
-    redScore: number;
     currentSet: number;
     blueTeamName: string;
     redTeamName: string;
   };
   globalBans?: string[]; // 글로벌 밴 챔피언 목록
+  blueScore?: number; // Moved to top level
+  redScore?: number; // Moved to top level
 }
 
 interface BanPickRecord {

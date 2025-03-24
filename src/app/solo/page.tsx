@@ -18,12 +18,12 @@ export default function SoloGame() {
     draftType: "",
     status: {
       phase: 1, // Solo mode starts at phase 1
-      blueScore: 0,
-      redScore: 0,
       currentSet: 1,
       blueTeamName: "블루팀",
       redTeamName: "레드팀",
     },
+    blueScore: 0,
+    redScore: 0,
     globalBans: [] as string[],
   });
   const [loading, setLoading] = useState(true);
@@ -77,10 +77,10 @@ export default function SoloGame() {
         version: config.version,
         draftType: config.draftType,
         globalBans: config.globalBans || [],
+        blueScore: 0,
+        redScore: 0,
         status: {
           phase: 1, // Solo mode starts directly at phase 1 (first ban phase)
-          blueScore: 0,
-          redScore: 0,
           currentSet: 1,
           blueTeamName: config.blueTeamName || "블루팀",
           redTeamName: config.redTeamName || "레드팀",
@@ -152,8 +152,8 @@ export default function SoloGame() {
       status: {
         ...prev.status,
         phase: 21, // 완료 상태로 설정
-        blueScore: prev.status.blueScore + 1,
       },
+      blueScore: (prev.blueScore || 0) + 1,
     }));
 
     setShowConfirmDialog(false);
@@ -178,8 +178,8 @@ export default function SoloGame() {
       status: {
         ...prev.status,
         phase: 21, // 완료 상태로 설정
-        redScore: prev.status.redScore + 1,
       },
+      redScore: (prev.redScore || 0) + 1,
     }));
 
     setShowConfirmDialog(false);
@@ -233,8 +233,8 @@ export default function SoloGame() {
         banPickHistory={banPickHistory}
         blueTeamName={gameInfo.status.blueTeamName}
         redTeamName={gameInfo.status.redTeamName}
-        blueScore={gameInfo.status.blueScore}
-        redScore={gameInfo.status.redScore}
+        blueScore={gameInfo.blueScore}
+        redScore={gameInfo.redScore}
         version={gameInfo.version}
         onNewGame={handleNewGame}
       />
@@ -251,12 +251,10 @@ export default function SoloGame() {
               {gameInfo.status.blueTeamName}
             </span>
             <span className="text-2xl font-bold">
-              {gameInfo.status.blueScore}
+              {gameInfo.blueScore || 0}
             </span>
             <span className="mx-2">:</span>
-            <span className="text-2xl font-bold">
-              {gameInfo.status.redScore}
-            </span>
+            <span className="text-2xl font-bold">{gameInfo.redScore || 0}</span>
             <span className="text-red-400 font-bold">
               {gameInfo.status.redTeamName}
             </span>
