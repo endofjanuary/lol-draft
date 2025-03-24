@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# League of Legends Draft Simulator
 
-## Getting Started
+League of Legends Draft Simulator은 LoL 게임의 팀 구성을 위한 챔피언 밴픽 과정을 시뮬레이션하는 웹 애플리케이션입니다.
 
-First, run the development server:
+## 주요 기능
+
+- 솔로 모드: 혼자서 양팀의 밴픽을 진행할 수 있습니다.
+- 멀티플레이어 모드: 1v1 또는 5v5로 여러 사용자가 실시간으로 밴픽에 참여할 수 있습니다.
+- 다양한 드래프트 모드: 일반 대회 모드, 하드/소프트 피어리스 모드 지원
+- 실시간 멀티플레이어: WebSocket을 통한 실시간 게임 진행
+- 글로벌 밴 기능: 특정 챔피언을 전역적으로 사용 불가능하게 설정
+
+## 기술 스택
+
+- **프론트엔드**: Next.js, React, TypeScript, Tailwind CSS
+- **백엔드**: Socket.IO (WebSocket)
+- **데이터 소스**: Riot Games Data Dragon API
+
+## 시작하기
+
+### 개발 서버 실행
 
 ```bash
+# 프론트엔드 개발 서버 실행
 npm run dev
-# or
+# 또는
 yarn dev
-# or
+# 또는
 pnpm dev
-# or
-bun dev
+
+# 백엔드 서버 실행 (별도 리포지토리)
+# 백엔드 서버는 8000번 포트에서 실행됩니다.
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 사용 방법
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. 메인 화면에서 "신규 생성" 또는 "밴픽 참가" 선택
+2. 신규 생성 시 게임 설정을 구성 (패치 버전, 팀 이름, 게임 모드 등)
+3. 게임 코드를 통해 다른 사용자들이 참여 가능
+4. 모든 플레이어가 준비되면 밴픽 시작
+5. 게임 결과 확인 및 공유
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 프로젝트 구조
 
-## Learn More
+- `/src/app` - 페이지 및 라우팅
+- `/src/components` - 재사용 가능한 React 컴포넌트
+- `/src/types` - TypeScript 타입 정의
+- `/docs` - 프로젝트 문서
 
-To learn more about Next.js, take a look at the following resources:
+## 문서
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+자세한 문서는 다음 링크에서 확인하실 수 있습니다:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [컴포넌트 구조](./docs/components.md)
+- [게임 모드](./docs/game-modes.md)
+- [API 및 소켓 이벤트](./docs/api.md)
+- [개발 가이드](./docs/development.md)
 
-## Deploy on Vercel
+## 라이센스
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT](LICENSE)
