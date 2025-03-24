@@ -153,11 +153,17 @@ export default function CreateGame() {
         return;
       }
 
+      // Map playerMode from UI to playerType for API
+      let playerType = formData.playerMode;
+      if (formData.playerMode === "solo") {
+        playerType = "single";
+      }
+
       // For multiplayer modes, continue with server request
       const requestBody = {
         version: formData.patchVersion,
         draftType: formData.draftMode,
-        playerType: formData.playerMode,
+        playerType: playerType, // Changed from playerMode to playerType
         matchFormat: formData.tournamentSet,
         timeLimit: formData.timerSetting === "limited",
         teamNames: {
