@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { GameInfo, ChampionData } from "@/types/game"; // Import from shared types
+import Timer from "./Timer"; // Import the Timer component
 
 interface DraftPhaseProps {
   gameInfo: GameInfo;
@@ -38,6 +39,11 @@ export default function DraftPhase({
   const [currentTurnPosition, setCurrentTurnPosition] =
     useState<string>("blue1");
 
+  // Add new state for random champion selection
+  const [availableChampions, setAvailableChampions] = useState<ChampionData[]>(
+    []
+  );
+
   // Fetch champion data from Riot API
   useEffect(() => {
     const fetchChampions = async () => {
@@ -61,6 +67,7 @@ export default function DraftPhase({
         // Convert the data object to an array of champions
         const championsArray = Object.values(data.data) as ChampionData[];
         setChampions(championsArray);
+        setAvailableChampions(championsArray); // Initialize available champions
       } catch (error) {
         console.error("Error fetching champion data:", error);
         setChampionError(
@@ -73,6 +80,23 @@ export default function DraftPhase({
 
     fetchChampions();
   }, [gameInfo.settings.version]);
+
+  // Update available champions whenever bans or picks change
+  useEffect(() => {
+    if (champions.length === 0) return;
+
+    // Filter out banned and picked champions
+    const allBannedChampions = [...blueBans, ...redBans];
+    const allPickedChampions = Object.values({ ...bluePicks, ...redPicks });
+
+    const availableChamps = champions.filter(
+      (champion) =>
+        !allBannedChampions.includes(champion.id) &&
+        !allPickedChampions.includes(champion.id)
+    );
+
+    setAvailableChampions(availableChamps);
+  }, [champions, blueBans, redBans, bluePicks, redPicks]);
 
   // Set the current turn position based on the phase
   useEffect(() => {
@@ -295,9 +319,13 @@ export default function DraftPhase({
     if (Object.values(pickedChampions).includes(championId)) return;
 
     console.log(`Selected champion: ${championId}`); // Debug log
-    setSelectedChampion(championId);
-    setSelectionSent(false); // Reset the selection sent flag
-    onSelectChampion(championId);
+
+    // Only update if the selection has changed to avoid unnecessary re-renders
+    if (selectedChampion !== championId) {
+      setSelectedChampion(championId);
+      setSelectionSent(false); // Reset the selection sent flag
+      onSelectChampion(championId);
+    }
   };
 
   const handleConfirmSelection = () => {
@@ -412,6 +440,72 @@ export default function DraftPhase({
     );
   };
 
+  // Timer timeout handler - useCallback으로 최적화하고 비동기적으로 처리
+  const handleTimerTimeout = useCallback(() => {
+    if (!playersTurn) return; // Only handle timeout if it's player's turn
+
+    const phase = gameInfo.status.phase;
+    console.log(`타이머 만료: 페이즈 ${phase}`);
+
+    // 비동기적으로 처리하여 렌더링 사이클과 분리
+    setTimeout(() => {
+      // For ban phases (1-6, 13-16)
+      if ((phase >= 1 && phase <= 6) || (phase >= 13 && phase <= 16)) {
+        console.log("밴 타임아웃 - 밴 건너뛰기");
+        // Skip ban by confirming with empty selection
+        onConfirmSelection();
+      }
+      // For pick phases (7-12, 17-20)
+      else if ((phase >= 7 && phase <= 12) || (phase >= 17 && phase <= 20)) {
+        // Select random champion
+        if (availableChampions.length > 0) {
+          const randomIndex = Math.floor(
+            Math.random() * availableChampions.length
+          );
+          const randomChampion = availableChampions[randomIndex];
+
+          console.log(`픽 타임아웃 - 랜덤 챔피언 선택됨: ${randomChampion.id}`);
+
+          // Set selected champion in local state
+          setSelectedChampion(randomChampion.id);
+          onSelectChampion(randomChampion.id);
+
+          // 상태 업데이트 후 확인 - 충분한 지연 시간 적용
+          setTimeout(() => {
+            console.log(`랜덤 선택 확정: ${randomChampion.id}`);
+            onConfirmSelection();
+          }, 500);
+        } else {
+          console.error("랜덤 선택할 사용 가능한 챔피언이 없습니다");
+          onConfirmSelection();
+        }
+      }
+    }, 0);
+  }, [
+    playersTurn,
+    gameInfo.status.phase,
+    availableChampions,
+    onConfirmSelection,
+    onSelectChampion,
+  ]);
+
+  // Render the timer with a stable reference
+  const renderTimer = () => {
+    // Only show timer when game has time limits enabled
+    if (!gameInfo.settings.timeLimit) return null;
+
+    return (
+      <div className="mb-4">
+        <Timer
+          duration={30} // 30 seconds per phase
+          isActive={playersTurn} // Only active during player's turn
+          onTimeout={handleTimerTimeout}
+          resetKey={`phase-${gameInfo.status.phase}`} // Change key to resetKey
+        />
+      </div>
+    );
+  };
+
   // Show loading state while fetching champion data
   if (isLoadingChampions) {
     return (
@@ -435,6 +529,7 @@ export default function DraftPhase({
     );
   }
 
+  // Optimize the render to prevent unnecessary re-renders of the timer
   return (
     <div className="min-h-screen bg-[#030C28] text-white p-4 flex flex-col">
       {/* Phase indicator */}
@@ -448,6 +543,18 @@ export default function DraftPhase({
               } Team to ${getCurrentAction()}`}
         </p>
         <p className="text-sm mt-1">Phase: {gameInfo.status.phase}/20</p>
+
+        {/* Render timer in its own div to isolate re-renders */}
+        {playersTurn && gameInfo.settings.timeLimit && (
+          <div className="mt-2">
+            <Timer
+              duration={30}
+              isActive={playersTurn}
+              onTimeout={handleTimerTimeout}
+              resetKey={`phase-${gameInfo.status.phase}`} // Change key to resetKey
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
