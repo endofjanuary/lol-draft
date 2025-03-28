@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
+import Timer from "../game/Timer"; // Import the Timer component
 
 interface ChampionData {
   id: string;
@@ -24,6 +25,7 @@ interface GameInfo {
   globalBans?: string[]; // 글로벌 밴 챔피언 목록
   blueScore?: number; // Moved to top level
   redScore?: number; // Moved to top level
+  timerSetting?: boolean; // Add timer setting field
 }
 
 interface BanPickRecord {
@@ -35,7 +37,7 @@ interface BanPickRecord {
 interface SoloDraftPhaseProps {
   gameInfo: GameInfo;
   onSelectChampion: (champion: string) => void;
-  onConfirmSelection: () => void;
+  onConfirmSelection: (forcedChampionId?: string) => void; // 선택적 매개변수 추가
   banPickHistory?: BanPickRecord[];
   selectedChampion?: string | null;
   currentTeam?: "blue" | "red";
@@ -240,6 +242,51 @@ export default function SoloDraftPhase({
     );
   };
 
+  // Get all available champions (not banned or picked)
+  const availableChampions = useMemo(() => {
+    return champions.filter((champion) => !isChampionUnavailable(champion.id));
+  }, [champions, allBannedChampions, allPickedChampions]);
+
+  // Handle timer timeout with useCallback for optimization
+  const handleTimerTimeout = useCallback(() => {
+    const phase = gameInfo.status.phase;
+    console.log(`타이머 만료: 페이즈 ${phase}`);
+
+    // For ban phases (1-6, 13-16)
+    if ((phase >= 1 && phase <= 6) || (phase >= 13 && phase <= 16)) {
+      console.log("밴 타임아웃 - 밴 건너뛰기");
+      // Skip ban by confirming with empty selection
+      onConfirmSelection();
+    }
+    // For pick phases (7-12, 17-20)
+    else if ((phase >= 7 && phase <= 12) || (phase >= 17 && phase <= 20)) {
+      // Select random champion
+      if (availableChampions.length > 0) {
+        const randomIndex = Math.floor(
+          Math.random() * availableChampions.length
+        );
+        const randomChampion = availableChampions[randomIndex];
+
+        console.log(`픽 타임아웃 - 랜덤 챔피언 선택됨: ${randomChampion.id}`);
+
+        // 로컬 상태 업데이트 (UI 표시용)
+        setSelectedChampion(randomChampion.id);
+        onSelectChampion(randomChampion.id);
+
+        // 직접 강제 챔피언 ID를 전달하여 즉시 확정
+        onConfirmSelection(randomChampion.id);
+      } else {
+        console.error("랜덤 선택할 사용 가능한 챔피언이 없습니다");
+        onConfirmSelection();
+      }
+    }
+  }, [
+    availableChampions,
+    gameInfo.status.phase,
+    onConfirmSelection,
+    onSelectChampion,
+  ]);
+
   // Handle champion selection
   const handleChampionClick = (championId: string) => {
     // Only allow selection of available champions
@@ -298,6 +345,18 @@ export default function SoloDraftPhase({
           의 {getCurrentAction()} 차례
         </p>
         <p className="text-sm mt-2">Phase: {gameInfo.status.phase}/20</p>
+
+        {/* Add timer component */}
+        {gameInfo.timerSetting && (
+          <div className="mt-3">
+            <Timer
+              duration={30} // 30 seconds per phase
+              isActive={true} // Always active in solo mode
+              onTimeout={handleTimerTimeout}
+              resetKey={`phase-${gameInfo.status.phase}`}
+            />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

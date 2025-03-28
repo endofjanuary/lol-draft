@@ -25,6 +25,7 @@ export default function SoloGame() {
     blueScore: 0,
     redScore: 0,
     globalBans: [] as string[],
+    timerSetting: false, // 추가: timerSetting 속성 초기화
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,17 +75,18 @@ export default function SoloGame() {
       const config = JSON.parse(soloGameConfig);
 
       setGameInfo({
-        version: config.version,
-        draftType: config.draftType,
-        globalBans: config.globalBans || [],
-        blueScore: 0,
-        redScore: 0,
+        version: config.version || "14.10.1",
+        draftType: config.draftType || "tournament",
+        timerSetting: config.timerSetting || false,
         status: {
           phase: 1, // Solo mode starts directly at phase 1 (first ban phase)
           currentSet: 1,
           blueTeamName: config.blueTeamName || "블루팀",
           redTeamName: config.redTeamName || "레드팀",
         },
+        globalBans: config.globalBans || [],
+        blueScore: 0,
+        redScore: 0,
       });
 
       setLoading(false);
@@ -100,20 +102,34 @@ export default function SoloGame() {
   };
 
   // 선택 확정 및 다음 페이즈 진행
-  const handleConfirmSelection = () => {
-    if (!selectedChampion) return;
+  const handleConfirmSelection = (forcedChampionId?: string) => {
+    // 타이머에 의한 강제 선택이 있으면 그 챔피언을 사용, 아니면 현재 선택된 챔피언 사용
+    const championToUse = forcedChampionId || selectedChampion;
+
+    // 선택된 챔피언이 없으면 중단 (밴 건너뛰기는 예외)
+    if (
+      !championToUse &&
+      !(
+        gameInfo.status.phase <= 6 ||
+        (gameInfo.status.phase >= 13 && gameInfo.status.phase <= 16)
+      )
+    ) {
+      return;
+    }
 
     const currentPhase = gameInfo.status.phase;
     const currentTeam = getCurrentTeam(currentPhase);
 
-    // 밴픽 기록에 추가
-    const newRecord: BanPickRecord = {
-      phase: currentPhase,
-      championId: selectedChampion,
-      team: currentTeam,
-    };
+    // 밴픽 기록에 추가 (선택된 챔피언이 있을 때만)
+    if (championToUse) {
+      const newRecord: BanPickRecord = {
+        phase: currentPhase,
+        championId: championToUse,
+        team: currentTeam,
+      };
 
-    setBanPickHistory((prev) => [...prev, newRecord]);
+      setBanPickHistory((prev) => [...prev, newRecord]);
+    }
 
     // 밴픽 완료 (phase 20) 확인
     if (currentPhase === 20) {
