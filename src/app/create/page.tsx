@@ -24,7 +24,7 @@ export default function CreateGame() {
     tournamentSet: "bo1",
     timerSetting: "unlimited",
     globalBans: [] as string[],
-    tournamentImage: null,
+    bannerImage: null as string | null,
   });
   const [versions, setVersions] = useState<string[]>([]);
   const [showChampionModal, setShowChampionModal] = useState(false);
@@ -123,9 +123,48 @@ export default function CreateGame() {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      console.log("Image uploaded:", e.target.files[0]);
-      // Image handling would go here in a real implementation
+      const file = e.target.files[0];
+      const reader = new FileReader();
+
+      reader.onload = (event) => {
+        // Fix the null check issue by using a type assertion or alternative approach
+        const result = event.target?.result;
+        if (result && typeof result === "string") {
+          setFormData((prev) => ({
+            ...prev,
+            bannerImage: result,
+          }));
+        }
+      };
+
+      reader.readAsDataURL(file);
     }
+  };
+
+  // Preview component for the uploaded image
+  const BannerPreview = () => {
+    if (!formData.bannerImage) return null;
+
+    return (
+      <div className="mt-2 relative">
+        <Image
+          src={formData.bannerImage}
+          alt="Banner preview"
+          width={200}
+          height={100}
+          className="rounded-md object-cover"
+        />
+        <button
+          type="button"
+          onClick={() =>
+            setFormData((prev) => ({ ...prev, bannerImage: null }))
+          }
+          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+        >
+          ✖
+        </button>
+      </div>
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -143,6 +182,7 @@ export default function CreateGame() {
           redTeamName: formData.redTeamName || "레드팀",
           globalBans: formData.globalBans,
           timerSetting: formData.timerSetting === "limited",
+          bannerImage: formData.bannerImage,
         };
 
         // Store config in localStorage
@@ -163,7 +203,7 @@ export default function CreateGame() {
       const requestBody = {
         version: formData.patchVersion,
         draftType: formData.draftMode,
-        playerType: playerType, // Changed from playerMode to playerType
+        playerType: playerType,
         matchFormat: formData.tournamentSet,
         timeLimit: formData.timerSetting === "limited",
         teamNames: {
@@ -172,6 +212,7 @@ export default function CreateGame() {
         },
         gameName: formData.gameName || "새로운 게임",
         globalBans: formData.globalBans,
+        bannerImage: formData.bannerImage,
       };
 
       console.log("Creating game with options:", requestBody);
@@ -522,9 +563,13 @@ export default function CreateGame() {
               </label>
               <label className="cursor-pointer">
                 <div className="w-full p-4 rounded-md border border-dashed border-gray-500 hover:bg-gray-800 flex flex-col items-center justify-center">
-                  <span className="text-gray-400">
-                    이미지 파일을 선택하세요
-                  </span>
+                  {formData.bannerImage ? (
+                    <BannerPreview />
+                  ) : (
+                    <span className="text-gray-400">
+                      이미지 파일을 선택하세요
+                    </span>
+                  )}
                 </div>
                 <input
                   type="file"

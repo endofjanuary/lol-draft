@@ -188,13 +188,28 @@ export default function ResultPhase({
           </div>
         </div>
 
-        {/* Center Area for future image content */}
+        {/* Center Area with Banner Image */}
         <div className="w-full md:w-2/4 bg-gray-900 bg-opacity-30 rounded-lg p-4 flex flex-col items-center justify-center">
-          <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
-            <p className="text-gray-400">
-              Game result image will be displayed here
-            </p>
-          </div>
+          {/* Banner Image */}
+          {gameInfo.settings.bannerImage || gameInfo.bannerImage ? (
+            <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+              <Image
+                src={
+                  gameInfo.settings.bannerImage || gameInfo.bannerImage || ""
+                }
+                alt="Tournament Banner"
+                width={500}
+                height={250}
+                className="w-full h-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
+              <p className="text-gray-400">
+                Game result image will be displayed here
+              </p>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="mt-8 flex gap-4 justify-center w-full">

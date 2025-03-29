@@ -26,6 +26,8 @@ export interface GameInfo {
     playerType: string; // "single", "1v1", "5v5"
     matchFormat: string; // "bo1", "bo3", "bo5"
     timeLimit: boolean;
+    globalBans?: string[];
+    bannerImage?: string;
   };
   status: {
     phase: number;
@@ -39,6 +41,7 @@ export interface GameInfo {
   clients: Player[]; // Connected clients/players
   blueScore?: number; // Now at top level
   redScore?: number; // Now at top level
+  bannerImage?: string; // Support for top-level banner image
 }
 
 /**
