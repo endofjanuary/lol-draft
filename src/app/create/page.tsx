@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { getApiBaseUrl } from "@/utils/apiConfig";
 
 interface Champion {
   id: string;
@@ -217,7 +218,8 @@ export default function CreateGame() {
 
       console.log("Creating game with options:", requestBody);
 
-      const response = await fetch("http://localhost:8000/games", {
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/games`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),

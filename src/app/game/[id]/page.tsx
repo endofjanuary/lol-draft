@@ -6,8 +6,9 @@ import { io, Socket } from "socket.io-client";
 import NicknameModal from "@/components/game/NicknameModal";
 import LobbyPhase from "@/components/game/LobbyPhase";
 import DraftPhase from "@/components/game/DraftPhase";
-import ResultPhase from "@/components/game/ResultPhase"; // Add this import
+import ResultPhase from "@/components/game/ResultPhase";
 import { GameInfo, Player } from "@/types/game";
+import { getApiBaseUrl, getSocketUrl } from "@/utils/apiConfig";
 
 export default function GamePage() {
   const { id } = useParams();
@@ -27,7 +28,8 @@ export default function GamePage() {
 
   // Connect to socket.io server
   useEffect(() => {
-    const socketInstance = io("http://localhost:8000", {
+    const socketUrl = getSocketUrl();
+    const socketInstance = io(socketUrl, {
       transports: ["websocket"],
       autoConnect: true,
     });
@@ -101,7 +103,8 @@ export default function GamePage() {
   const fetchGameInfo = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:8000/games/${id}`);
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/games/${id}`);
       if (!response.ok) {
         throw new Error("게임 정보를 불러오는데 실패했습니다.");
       }
