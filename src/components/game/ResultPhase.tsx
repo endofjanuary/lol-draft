@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import { GameInfo } from "@/types/game";
 
@@ -16,6 +16,45 @@ export default function ResultPhase({
   isHost,
 }: ResultPhaseProps) {
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
+
+  // 마지막 세트인지 확인하는 로직
+  const isFinalSet = useMemo(() => {
+    const matchFormat = gameInfo.settings.matchFormat || "bo1"; // 기본값 단판제
+    const currentSet = gameInfo.status.setNumber || 1; // 현재 세트 번호
+    const blueScore = gameInfo.blueScore || 0; // 블루팀 점수
+    const redScore = gameInfo.redScore || 0; // 레드팀 점수
+
+    // 단판제인 경우 항상 마지막 세트
+    if (matchFormat === "bo1") {
+      return true;
+    }
+
+    // 3판 2선승제(bo3)
+    if (matchFormat === "bo3") {
+      // 어느 한 팀이 2승을 달성한 경우
+      if (blueScore >= 2 || redScore >= 2) {
+        return true;
+      }
+      // 현재 3세트인 경우
+      if (currentSet >= 3) {
+        return true;
+      }
+    }
+
+    // 5판 3선승제(bo5)
+    if (matchFormat === "bo5") {
+      // 어느 한 팀이 3승을 달성한 경우
+      if (blueScore >= 3 || redScore >= 3) {
+        return true;
+      }
+      // 현재 5세트인 경우
+      if (currentSet >= 5) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [gameInfo]);
 
   // Extract ban and pick data from gameInfo
   const blueBans: string[] = [];
@@ -86,8 +125,10 @@ export default function ResultPhase({
     // First send the result to the server
     onConfirmResult(selectedWinner);
 
-    // Then move to the next game
-    onNextGame();
+    // 마지막 세트가 아닐 경우에만 다음 게임으로 이동
+    if (!isFinalSet) {
+      onNextGame();
+    }
   };
 
   // Get champion image URL from the champion ID
@@ -146,7 +187,10 @@ export default function ResultPhase({
       {/* Header */}
       <div className="text-center mb-4">
         <h2 className="text-2xl font-bold">GAME RESULT</h2>
-        <p className="text-lg">Set {gameInfo.status.setNumber}</p>
+        <p className="text-lg">
+          Set {gameInfo.status.setNumber}
+          {isFinalSet && " (최종 세트)"}
+        </p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
@@ -235,7 +279,7 @@ export default function ResultPhase({
                 }
                 bg-gray-600 hover:bg-gray-700`}
             >
-              다음 게임으로
+              {isFinalSet ? "시리즈 종료" : "다음 게임으로"}
             </button>
 
             <button

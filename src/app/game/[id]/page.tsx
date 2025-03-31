@@ -269,7 +269,38 @@ export default function GamePage() {
 
   // Handle moving to next game (in a series)
   const handleNextGame = () => {
-    if (!socket || !isHost) return;
+    if (!socket || !isHost || !gameInfo) return;
+
+    // 마지막 세트인지 확인하는 로직
+    const isFinalSet = (() => {
+      const matchFormat = gameInfo.settings.matchFormat || "bo1";
+      const currentSet = gameInfo.status.setNumber || 1;
+      const blueScore = gameInfo.blueScore || 0;
+      const redScore = gameInfo.redScore || 0;
+
+      // 단판제인 경우
+      if (matchFormat === "bo1") return true;
+
+      // 3판 2선승제
+      if (matchFormat === "bo3") {
+        if (blueScore >= 2 || redScore >= 2 || currentSet >= 3) return true;
+      }
+
+      // 5판 3선승제
+      if (matchFormat === "bo5") {
+        if (blueScore >= 3 || redScore >= 3 || currentSet >= 5) return true;
+      }
+
+      return false;
+    })();
+
+    // 마지막 세트인 경우 다음 게임으로 이동하지 않음
+    if (isFinalSet) {
+      console.log(
+        "최종 세트가 완료되었습니다. 더 이상 진행할 세트가 없습니다."
+      );
+      return;
+    }
 
     socket.emit("prepare_next_game", {}, (response: any) => {
       if (response.status !== "success") {
