@@ -25,8 +25,15 @@ export default function LobbyPhase({
 }: LobbyPhaseProps) {
   const [isReady, setIsReady] = useState(false);
   const [prevPosition, setPrevPosition] = useState(position);
+  const [copied, setCopied] = useState(false);
 
-  // Remove the fetchPlayers useEffect since we're now getting players from props
+  // Function to copy game ID to clipboard
+  const copyGameId = () => {
+    navigator.clipboard.writeText(gameId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   // Reset ready status when position changes and update local ready state from players prop
   useEffect(() => {
@@ -148,10 +155,59 @@ export default function LobbyPhase({
 
   return (
     <div className="container mx-auto p-4 py-8">
-      <h1 className="text-2xl font-bold text-center mb-8">
+      <h1 className="text-2xl font-bold text-center mb-2">
         {gameInfo.status.blueTeamName || "블루팀"} vs{" "}
         {gameInfo.status.redTeamName || "레드팀"}
       </h1>
+
+      <div className="flex justify-center items-center mb-6 gap-2">
+        <div className="bg-gray-800 px-3 py-1 rounded text-gray-300 flex items-center">
+          <span className="mr-2">게임 코드:</span>
+          <span className="font-mono">{gameId}</span>
+        </div>
+        <button
+          onClick={copyGameId}
+          className="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm flex items-center"
+        >
+          {copied ? (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              복사됨
+            </>
+          ) : (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+              복사하기
+            </>
+          )}
+        </button>
+      </div>
 
       <div className="flex flex-col md:flex-row gap-8">
         {/* Blue Team Column */}
