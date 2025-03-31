@@ -531,81 +531,83 @@ export default function DraftPhase({
 
   // Optimize the render to prevent unnecessary re-renders of the timer
   return (
-    <div className="min-h-screen bg-[#030C28] text-white p-4 flex flex-col">
-      {/* Phase indicator */}
-      <div className="text-center mb-4">
-        <h2 className="text-2xl font-bold">{getPhaseDescription()}</h2>
-        <p className="text-lg">
-          {playersTurn
-            ? `Your turn to ${getCurrentAction()}`
-            : `Waiting for ${
-                currentTurnPosition.startsWith("blue") ? "Blue" : "Red"
-              } Team to ${getCurrentAction()}`}
-        </p>
-        <p className="text-sm mt-1">Phase: {gameInfo.status.phase}/20</p>
+    <div className="min-h-screen bg-[#030C28] text-white p-4 flex flex-col items-center justify-center">
+      {/* Use max-w container to limit overall width */}
+      <div className="w-full max-w-7xl">
+        {/* Phase indicator */}
+        <div className="text-center mb-4">
+          <h2 className="text-2xl font-bold">{getPhaseDescription()}</h2>
+          <p className="text-lg">
+            {playersTurn
+              ? `Your turn to ${getCurrentAction()}`
+              : `Waiting for ${
+                  currentTurnPosition.startsWith("blue") ? "Blue" : "Red"
+                } Team to ${getCurrentAction()}`}
+          </p>
+          <p className="text-sm mt-1">Phase: {gameInfo.status.phase}/20</p>
 
-        {/* Render timer in its own div to isolate re-renders */}
-        {playersTurn && gameInfo.settings.timeLimit && (
-          <div className="mt-2">
-            <Timer
-              duration={30}
-              isActive={playersTurn}
-              onTimeout={handleTimerTimeout}
-              resetKey={`phase-${gameInfo.status.phase}`} // Change key to resetKey
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-4">
-        {/* Blue Team */}
-        <div className="w-full md:w-1/4 bg-blue-900 bg-opacity-20 rounded-lg p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-blue-400">
-              {gameInfo.status.blueTeamName || "Blue Team"}
-            </h3>
-            <span className="text-xl">{gameInfo.blueScore || 0}</span>
-          </div>
-
-          {/* Blue Bans */}
-          <div className="mb-6">
-            <h4 className="text-sm text-gray-400 mb-2">BANS</h4>
-            <div className="flex flex-wrap gap-1">
-              {[0, 1, 2, 3, 4].map((index) => (
-                <div
-                  key={`blue-ban-${index}`}
-                  className="w-10 h-10 rounded-md bg-gray-800 overflow-hidden"
-                >
-                  {blueBans[index] && (
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={getChampionImageUrl(blueBans[index])}
-                        alt={blueBans[index]}
-                        width={40}
-                        height={40}
-                        className="w-full h-full object-cover opacity-50"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-full h-0.5 bg-red-500 rotate-45 transform origin-center"></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+          {/* Render timer in its own div to isolate re-renders */}
+          {playersTurn && gameInfo.settings.timeLimit && (
+            <div className="mt-2">
+              <Timer
+                duration={30}
+                isActive={playersTurn}
+                onTimeout={handleTimerTimeout}
+                resetKey={`phase-${gameInfo.status.phase}`}
+              />
             </div>
-          </div>
+          )}
+        </div>
 
-          {/* Blue Picks */}
-          <div>
-            <h4 className="text-sm text-gray-400 mb-2">PICKS</h4>
-            <div className="flex flex-col gap-2">
-              {[1, 2, 3, 4, 5].map((position) => (
-                <div
-                  key={`blue${position}`}
-                  className="flex items-center gap-2"
-                >
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Blue Team */}
+          <div className="w-full md:w-1/4 bg-blue-900 bg-opacity-20 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-blue-400">
+                {gameInfo.status.blueTeamName || "Blue Team"}
+              </h3>
+              <span className="text-xl">{gameInfo.blueScore || 0}</span>
+            </div>
+
+            {/* Blue Bans */}
+            <div className="mb-6">
+              <h4 className="text-sm text-gray-400 mb-2">BANS</h4>
+              <div className="flex flex-wrap gap-1">
+                {[0, 1, 2, 3, 4].map((index) => (
                   <div
-                    className={`
+                    key={`blue-ban-${index}`}
+                    className="w-10 h-10 rounded-md bg-gray-800 overflow-hidden"
+                  >
+                    {blueBans[index] && (
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={getChampionImageUrl(blueBans[index])}
+                          alt={blueBans[index]}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover opacity-50"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-full h-0.5 bg-red-500 rotate-45 transform origin-center"></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Blue Picks */}
+            <div>
+              <h4 className="text-sm text-gray-400 mb-2">PICKS</h4>
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4, 5].map((position) => (
+                  <div
+                    key={`blue${position}`}
+                    className="flex items-center gap-2"
+                  >
+                    <div
+                      className={`
                     w-1 h-6 
                     ${
                       currentTurnPosition === `blue${position}`
@@ -613,24 +615,25 @@ export default function DraftPhase({
                         : "bg-gray-600"
                     }
                   `}
-                  ></div>
-                  {renderTeamSlot("blue", position)}
-                  <span className="text-sm">{`BLUE ${position}`}</span>
-                </div>
-              ))}
+                    ></div>
+                    {renderTeamSlot("blue", position)}
+                    <span className="text-sm">{`BLUE ${position}`}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Champion Selection Grid */}
-        <div className="w-full md:w-2/4 bg-gray-900 bg-opacity-30 rounded-lg p-4">
-          <h3 className="text-lg font-bold mb-4">Select Champion</h3>
-          <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
-            {champions.map((champion) => (
-              <div
-                key={champion.id}
-                onClick={() => handleChampionClick(champion.id)}
-                className={`
+          {/* Champion Selection Grid - Modified with fixed height and scrolling */}
+          <div className="w-full md:w-2/4 bg-gray-900 bg-opacity-30 rounded-lg p-4 flex flex-col">
+            <h3 className="text-lg font-bold mb-4">Select Champion</h3>
+            {/* Add max-height and overflow for scrolling */}
+            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 mb-4 max-h-[400px] overflow-y-auto p-2">
+              {champions.map((champion) => (
+                <div
+                  key={champion.id}
+                  onClick={() => handleChampionClick(champion.id)}
+                  className={`
                   relative w-12 h-12 rounded-md overflow-hidden cursor-pointer
                   ${
                     isChampionDisabled(champion.id)
@@ -644,37 +647,37 @@ export default function DraftPhase({
                   }
                   ${playersTurn ? "hover:ring-1 hover:ring-white" : ""}
                 `}
-                title={champion.name}
-              >
-                <Image
-                  src={getChampionImageUrl(champion.id)}
-                  alt={champion.name}
-                  width={64}
-                  height={64}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Selection UI for player's turn */}
-          {playersTurn && (
-            <div className="mt-4 flex flex-col items-center">
-              <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-800 mb-2">
-                {selectedChampion && (
+                  title={champion.name}
+                >
                   <Image
-                    src={getChampionImageUrl(selectedChampion)}
-                    alt={selectedChampion}
+                    src={getChampionImageUrl(champion.id)}
+                    alt={champion.name}
                     width={64}
                     height={64}
                     className="w-full h-full object-cover"
                   />
-                )}
-              </div>
-              <button
-                onClick={handleConfirmSelection}
-                disabled={!selectedChampion}
-                className={`
+                </div>
+              ))}
+            </div>
+
+            {/* Selection UI for player's turn */}
+            {playersTurn && (
+              <div className="mt-auto flex flex-col items-center">
+                <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-800 mb-2">
+                  {selectedChampion && (
+                    <Image
+                      src={getChampionImageUrl(selectedChampion)}
+                      alt={selectedChampion}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+                <button
+                  onClick={handleConfirmSelection}
+                  disabled={!selectedChampion}
+                  className={`
                   px-4 py-2 rounded-md font-bold
                   ${
                     selectedChampion
@@ -682,58 +685,61 @@ export default function DraftPhase({
                       : "bg-gray-600 cursor-not-allowed opacity-50"
                   }
                 `}
-              >
-                선택완료
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Red Team */}
-        <div className="w-full md:w-1/4 bg-red-900 bg-opacity-20 rounded-lg p-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-red-400">
-              {gameInfo.status.redTeamName || "Red Team"}
-            </h3>
-            <span className="text-xl">{gameInfo.redScore || 0}</span>
-          </div>
-
-          {/* Red Bans */}
-          <div className="mb-6">
-            <h4 className="text-sm text-gray-400 mb-2">BANS</h4>
-            <div className="flex flex-wrap gap-1">
-              {[0, 1, 2, 3, 4].map((index) => (
-                <div
-                  key={`red-ban-${index}`}
-                  className="w-10 h-10 rounded-md bg-gray-800 overflow-hidden"
                 >
-                  {redBans[index] && (
-                    <div className="relative w-full h-full">
-                      <Image
-                        src={getChampionImageUrl(redBans[index])}
-                        alt={redBans[index]}
-                        width={40}
-                        height={40}
-                        className="w-full h-full object-cover opacity-50"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-full h-0.5 bg-red-500 rotate-45 transform origin-center"></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  선택완료
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Red Picks */}
-          <div>
-            <h4 className="text-sm text-gray-400 mb-2">PICKS</h4>
-            <div className="flex flex-col gap-2">
-              {[1, 2, 3, 4, 5].map((position) => (
-                <div key={`red${position}`} className="flex items-center gap-2">
+          {/* Red Team */}
+          <div className="w-full md:w-1/4 bg-red-900 bg-opacity-20 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-red-400">
+                {gameInfo.status.redTeamName || "Red Team"}
+              </h3>
+              <span className="text-xl">{gameInfo.redScore || 0}</span>
+            </div>
+
+            {/* Red Bans */}
+            <div className="mb-6">
+              <h4 className="text-sm text-gray-400 mb-2">BANS</h4>
+              <div className="flex flex-wrap gap-1">
+                {[0, 1, 2, 3, 4].map((index) => (
                   <div
-                    className={`
+                    key={`red-ban-${index}`}
+                    className="w-10 h-10 rounded-md bg-gray-800 overflow-hidden"
+                  >
+                    {redBans[index] && (
+                      <div className="relative w-full h-full">
+                        <Image
+                          src={getChampionImageUrl(redBans[index])}
+                          alt={redBans[index]}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover opacity-50"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-full h-0.5 bg-red-500 rotate-45 transform origin-center"></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Red Picks */}
+            <div>
+              <h4 className="text-sm text-gray-400 mb-2">PICKS</h4>
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4, 5].map((position) => (
+                  <div
+                    key={`red${position}`}
+                    className="flex items-center gap-2"
+                  >
+                    <div
+                      className={`
                     w-1 h-6 
                     ${
                       currentTurnPosition === `red${position}`
@@ -741,11 +747,12 @@ export default function DraftPhase({
                         : "bg-gray-600"
                     }
                   `}
-                  ></div>
-                  {renderTeamSlot("red", position)}
-                  <span className="text-sm">{`RED ${position}`}</span>
-                </div>
-              ))}
+                    ></div>
+                    {renderTeamSlot("red", position)}
+                    <span className="text-sm">{`RED ${position}`}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
