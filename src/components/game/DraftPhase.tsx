@@ -66,6 +66,10 @@ export default function DraftPhase({
 
         // Convert the data object to an array of champions
         const championsArray = Object.values(data.data) as ChampionData[];
+
+        // Sort champions by name according to the requested language
+        championsArray.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+
         setChampions(championsArray);
         setAvailableChampions(championsArray); // Initialize available champions
       } catch (error) {
