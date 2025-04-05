@@ -1,7 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ["ddragon.leagueoflegends.com"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "ddragon.leagueoflegends.com",
+        pathname: "**",
+      },
+    ],
   },
   env: {
     // Define a fallback as empty string when env var is not available
