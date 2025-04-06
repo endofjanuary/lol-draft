@@ -405,6 +405,11 @@ export default function DraftPhase({
     const key = `${team}${position}`;
     const championId = team === "blue" ? bluePicks[key] : redPicks[key];
 
+    // Find champion name from its ID
+    const championName = championId
+      ? champions.find((c) => c.id === championId)?.name || championId
+      : "";
+
     return (
       <div className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden`}>
         {championId && (
@@ -605,25 +610,38 @@ export default function DraftPhase({
             <div>
               <h4 className="text-sm text-gray-400 mb-2">PICKS</h4>
               <div className="flex flex-col gap-2">
-                {[1, 2, 3, 4, 5].map((position) => (
-                  <div
-                    key={`blue${position}`}
-                    className="flex items-center gap-2"
-                  >
-                    <div
-                      className={`
-                    w-1 h-6 
-                    ${
-                      currentTurnPosition === `blue${position}`
-                        ? "bg-yellow-400"
-                        : "bg-gray-600"
-                    }
-                  `}
-                    ></div>
-                    {renderTeamSlot("blue", position)}
-                    <span className="text-sm">{`BLUE ${position}`}</span>
-                  </div>
-                ))}
+                {[1, 2, 3, 4, 5].map((position) => {
+                  const key = `blue${position}`;
+                  const championId = bluePicks[key];
+                  const championName = championId
+                    ? champions.find((c) => c.id === championId)?.name ||
+                      championId
+                    : "";
+
+                  return (
+                    <div key={key} className="flex items-center gap-2">
+                      <div
+                        className={`
+                      w-1 h-6 
+                      ${
+                        currentTurnPosition === key
+                          ? "bg-yellow-400"
+                          : "bg-gray-600"
+                      }
+                    `}
+                      ></div>
+                      {renderTeamSlot("blue", position)}
+                      <div className="flex flex-col">
+                        <span className="text-sm">{`BLUE ${position}`}</span>
+                        {championName && (
+                          <span className="text-xs text-blue-300">
+                            {championName}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -737,25 +755,38 @@ export default function DraftPhase({
             <div>
               <h4 className="text-sm text-gray-400 mb-2">PICKS</h4>
               <div className="flex flex-col gap-2">
-                {[1, 2, 3, 4, 5].map((position) => (
-                  <div
-                    key={`red${position}`}
-                    className="flex items-center gap-2"
-                  >
-                    <div
-                      className={`
-                    w-1 h-6 
-                    ${
-                      currentTurnPosition === `red${position}`
-                        ? "bg-yellow-400"
-                        : "bg-gray-600"
-                    }
-                  `}
-                    ></div>
-                    {renderTeamSlot("red", position)}
-                    <span className="text-sm">{`RED ${position}`}</span>
-                  </div>
-                ))}
+                {[1, 2, 3, 4, 5].map((position) => {
+                  const key = `red${position}`;
+                  const championId = redPicks[key];
+                  const championName = championId
+                    ? champions.find((c) => c.id === championId)?.name ||
+                      championId
+                    : "";
+
+                  return (
+                    <div key={key} className="flex items-center gap-2">
+                      <div
+                        className={`
+                      w-1 h-6 
+                      ${
+                        currentTurnPosition === key
+                          ? "bg-yellow-400"
+                          : "bg-gray-600"
+                      }
+                    `}
+                      ></div>
+                      {renderTeamSlot("red", position)}
+                      <div className="flex flex-col">
+                        <span className="text-sm">{`RED ${position}`}</span>
+                        {championName && (
+                          <span className="text-xs text-red-300">
+                            {championName}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
