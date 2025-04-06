@@ -73,11 +73,40 @@ export default function LobbyPhase({
     return teamPlayers.length > 0 && teamPlayers.every((p) => p.isReady);
   };
 
+  // 모든 팀 슬롯이 채워져 있는지 확인
+  const areAllTeamSlotsFilled = () => {
+    const is5v5 = gameInfo.settings.playerType === "5v5";
+    const positionsPerTeam = is5v5 ? 5 : 1;
+    const requiredPositions = [];
+
+    // 필요한 모든 포지션 목록 생성
+    for (let i = 1; i <= positionsPerTeam; i++) {
+      requiredPositions.push(`blue${i}`);
+      requiredPositions.push(`red${i}`);
+    }
+
+    // 모든 필요한 포지션에 플레이어가 있는지 확인
+    return requiredPositions.every((pos) =>
+      players.some((player) => player.position === pos)
+    );
+  };
+
+  // 게임 시작 가능 여부 확인 (모든 조건 충족)
+  const canStartGame = () => {
+    return areAllTeamPlayersReady() && areAllTeamSlotsFilled();
+  };
+
   // Check if player is on a team (not spectator)
   const isOnTeam = position !== "spectator";
 
   // Handle position change with ready state reset
   const handlePositionChange = (newPosition: string) => {
+    // 준비완료 상태인 경우 위치 변경 불가
+    if (isReady) {
+      // 알림 토스트나 메시지를 여기에 추가할 수 있습니다.
+      return;
+    }
+
     if (isPositionAvailable(newPosition) || position === newPosition) {
       onPositionChange(newPosition);
       // Ready state will be reset in the useEffect when position changes
@@ -96,16 +125,22 @@ export default function LobbyPhase({
       const player = players.find((p) => p.position === pos);
       const isCurrentPlayer = position === pos;
       const isPlayerHost = player?.isHost || false; // Check if this player is the host
+      const isCurrentPlayerReady = isCurrentPlayer && isReady;
+      const canChangePosition = !isReady; // 준비 상태가 아닐 때만 이동 가능
 
       slots.push(
         <div
           key={pos}
-          className={`p-4 rounded-md mb-2 cursor-pointer ${
+          className={`p-4 rounded-md mb-2 ${
             isCurrentPlayer
               ? "bg-blue-700 border-2 border-yellow-300"
               : player?.isReady
               ? "bg-blue-800 border-2 border-green-400 shadow-md shadow-green-500/30"
               : "bg-blue-900 hover:bg-blue-800"
+          } ${
+            !isCurrentPlayer && canChangePosition
+              ? "cursor-pointer"
+              : "cursor-default"
           }`}
           onClick={() => handlePositionChange(pos)}
         >
@@ -153,16 +188,22 @@ export default function LobbyPhase({
       const player = players.find((p) => p.position === pos);
       const isCurrentPlayer = position === pos;
       const isPlayerHost = player?.isHost || false; // Check if this player is the host
+      const isCurrentPlayerReady = isCurrentPlayer && isReady;
+      const canChangePosition = !isReady; // 준비 상태가 아닐 때만 이동 가능
 
       slots.push(
         <div
           key={pos}
-          className={`p-4 rounded-md mb-2 cursor-pointer ${
+          className={`p-4 rounded-md mb-2 ${
             isCurrentPlayer
               ? "bg-red-700 border-2 border-yellow-300"
               : player?.isReady
               ? "bg-red-800 border-2 border-green-400 shadow-md shadow-green-500/30"
               : "bg-red-900 hover:bg-red-800"
+          } ${
+            !isCurrentPlayer && canChangePosition
+              ? "cursor-pointer"
+              : "cursor-default"
           }`}
           onClick={() => handlePositionChange(pos)}
         >
@@ -320,10 +361,20 @@ export default function LobbyPhase({
             })}
           {position !== "spectator" && (
             <div
-              className="px-3 py-1 rounded bg-gray-700 hover:bg-purple-700 cursor-pointer"
-              onClick={() => onPositionChange("spectator")}
+              className={`px-3 py-1 rounded ${
+                isReady
+                  ? "bg-gray-600 cursor-not-allowed"
+                  : "bg-gray-700 hover:bg-purple-700 cursor-pointer"
+              }`}
+              onClick={() => !isReady && onPositionChange("spectator")}
             >
-              관전하기
+              {isReady ? (
+                <>
+                  <span className="text-gray-400">준비 취소 후 관전 가능</span>
+                </>
+              ) : (
+                "관전하기"
+              )}
             </div>
           )}
         </div>
@@ -347,9 +398,9 @@ export default function LobbyPhase({
         {isHost && (
           <button
             onClick={onStartDraft}
-            disabled={!areAllTeamPlayersReady()}
+            disabled={!canStartGame()}
             className={`px-6 py-3 rounded-lg font-bold ${
-              areAllTeamPlayersReady()
+              canStartGame()
                 ? "bg-yellow-600 hover:bg-yellow-700"
                 : "bg-gray-600 cursor-not-allowed"
             }`}
