@@ -104,7 +104,7 @@ export default function LobbyPhase({
             isCurrentPlayer
               ? "bg-blue-700 border-2 border-yellow-300"
               : player?.isReady
-              ? "bg-blue-900 border border-green-400"
+              ? "bg-blue-800 border-2 border-green-400 shadow-md shadow-green-500/30"
               : "bg-blue-900 hover:bg-blue-800"
           }`}
           onClick={() => handlePositionChange(pos)}
@@ -115,7 +115,23 @@ export default function LobbyPhase({
               {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
             </span>
             {(player?.isReady || (isCurrentPlayer && isReady)) && (
-              <span className="text-green-400 text-sm font-bold">준비완료</span>
+              <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3 w-3 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                준비완료
+              </span>
             )}
           </div>
           <div className="mt-1 text-lg">
@@ -145,7 +161,7 @@ export default function LobbyPhase({
             isCurrentPlayer
               ? "bg-red-700 border-2 border-yellow-300"
               : player?.isReady
-              ? "bg-red-900 border border-green-400"
+              ? "bg-red-800 border-2 border-green-400 shadow-md shadow-green-500/30"
               : "bg-red-900 hover:bg-red-800"
           }`}
           onClick={() => handlePositionChange(pos)}
@@ -156,7 +172,23 @@ export default function LobbyPhase({
               {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
             </span>
             {(player?.isReady || (isCurrentPlayer && isReady)) && (
-              <span className="text-green-400 text-sm font-bold">준비완료</span>
+              <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3 w-3 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                준비완료
+              </span>
             )}
           </div>
           <div className="mt-1 text-lg">
