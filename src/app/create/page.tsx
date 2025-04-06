@@ -526,26 +526,27 @@ export default function CreateGame() {
                   .map((champion) => (
                     <div
                       key={champion!.id}
-                      className="relative group"
-                      onClick={() => toggleChampionBan(champion!.id)}
+                      className="bg-gray-700 px-3 py-1 rounded-md flex items-center"
                     >
                       <Image
                         src={`https://ddragon.leagueoflegends.com/cdn/${
                           formData.patchVersion
                         }/img/champion/${champion!.id}.png`}
                         alt={champion!.name}
-                        width={40}
-                        height={40}
-                        className="rounded-md cursor-pointer border-2 border-red-500"
+                        width={24}
+                        height={24}
+                        className="rounded-md mr-2"
                       />
-                      <div className="absolute top-0 right-0 bg-red-500 rounded-bl-md rounded-tr-md w-5 h-5 flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">✖</span>
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center rounded-md transition-all">
-                        <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">
-                          ✖
-                        </span>
-                      </div>
+                      <span className="text-sm">{champion!.name}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleChampionBan(champion!.id);
+                        }}
+                        className="ml-2 text-red-400 hover:text-red-500"
+                      >
+                        ✖
+                      </button>
                     </div>
                   ))}
               </div>
