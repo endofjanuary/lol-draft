@@ -306,7 +306,7 @@ export default function CreateGame() {
                 {versions.length > 0 ? (
                   versions.map((version) => (
                     <option key={version} value={version}>
-                      {version}
+                      {version.split(".").slice(0, 2).join(".")}
                     </option>
                   ))
                 ) : (
