@@ -11,6 +11,7 @@ interface LobbyPhaseProps {
   onPositionChange: (position: string) => void;
   onReadyChange: (isReady: boolean) => void;
   onStartDraft: () => void;
+  nickname?: string; // 현재 사용자의 닉네임 추가
 }
 
 export default function LobbyPhase({
@@ -22,6 +23,7 @@ export default function LobbyPhase({
   onPositionChange,
   onReadyChange,
   onStartDraft,
+  nickname = "", // 기본값 추가
 }: LobbyPhaseProps) {
   const [isReady, setIsReady] = useState(false);
   const [prevPosition, setPrevPosition] = useState(position);
@@ -98,10 +100,13 @@ export default function LobbyPhase({
       slots.push(
         <div
           key={pos}
-          className={`p-4 rounded-md mb-2 cursor-pointer
-            ${
-              isCurrentPlayer ? "bg-blue-700" : "bg-blue-900 hover:bg-blue-800"
-            }`}
+          className={`p-4 rounded-md mb-2 cursor-pointer ${
+            isCurrentPlayer
+              ? "bg-blue-700 border-2 border-yellow-300"
+              : player?.isReady
+              ? "bg-blue-900 border border-green-400"
+              : "bg-blue-900 hover:bg-blue-800"
+          }`}
           onClick={() => handlePositionChange(pos)}
         >
           <div className="flex justify-between items-center">
@@ -110,11 +115,17 @@ export default function LobbyPhase({
               {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
             </span>
             {(player?.isReady || (isCurrentPlayer && isReady)) && (
-              <span className="text-green-400 text-sm">준비완료</span>
+              <span className="text-green-400 text-sm font-bold">준비완료</span>
             )}
           </div>
           <div className="mt-1 text-lg">
-            {player ? player.nickname : "빈 자리"}
+            {player ? (
+              <span className={isCurrentPlayer ? "font-bold" : ""}>
+                {player.nickname} {isCurrentPlayer && "(나)"}
+              </span>
+            ) : (
+              "빈 자리"
+            )}
           </div>
         </div>
       );
@@ -130,8 +141,13 @@ export default function LobbyPhase({
       slots.push(
         <div
           key={pos}
-          className={`p-4 rounded-md mb-2 cursor-pointer
-            ${isCurrentPlayer ? "bg-red-700" : "bg-red-900 hover:bg-red-800"}`}
+          className={`p-4 rounded-md mb-2 cursor-pointer ${
+            isCurrentPlayer
+              ? "bg-red-700 border-2 border-yellow-300"
+              : player?.isReady
+              ? "bg-red-900 border border-green-400"
+              : "bg-red-900 hover:bg-red-800"
+          }`}
           onClick={() => handlePositionChange(pos)}
         >
           <div className="flex justify-between items-center">
@@ -140,11 +156,17 @@ export default function LobbyPhase({
               {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
             </span>
             {(player?.isReady || (isCurrentPlayer && isReady)) && (
-              <span className="text-green-400 text-sm">준비완료</span>
+              <span className="text-green-400 text-sm font-bold">준비완료</span>
             )}
           </div>
           <div className="mt-1 text-lg">
-            {player ? player.nickname : "빈 자리"}
+            {player ? (
+              <span className={isCurrentPlayer ? "font-bold" : ""}>
+                {player.nickname} {isCurrentPlayer && "(나)"}
+              </span>
+            ) : (
+              "빈 자리"
+            )}
           </div>
         </div>
       );
@@ -242,23 +264,28 @@ export default function LobbyPhase({
         <div className="flex flex-wrap gap-2">
           {players
             .filter((p) => p.position === "spectator")
-            .map((spectator, index) => (
-              <div
-                key={index}
-                className={`px-3 py-1 rounded ${
-                  position === "spectator" &&
-                  spectator.nickname ===
-                    players.find((p) => p.position === position)?.nickname
-                    ? "bg-purple-700"
-                    : "bg-gray-700"
-                } flex items-center gap-1`}
-              >
-                {spectator.nickname}
-                {spectator.isHost && (
-                  <span className="text-yellow-400 ml-1">👑</span>
-                )}
-              </div>
-            ))}
+            .map((spectator, index) => {
+              // 현재 사용자 닉네임과 관전자 닉네임 직접 비교
+              const isCurrentUser = nickname === spectator.nickname;
+
+              return (
+                <div
+                  key={index}
+                  className={`px-3 py-1 rounded ${
+                    isCurrentUser
+                      ? "bg-purple-700 border border-yellow-300"
+                      : "bg-gray-700"
+                  } flex items-center gap-1`}
+                >
+                  <span className={isCurrentUser ? "font-bold" : ""}>
+                    {spectator.nickname} {isCurrentUser && "(나)"}
+                  </span>
+                  {spectator.isHost && (
+                    <span className="text-yellow-400 ml-1">👑</span>
+                  )}
+                </div>
+              );
+            })}
           {position !== "spectator" && (
             <div
               className="px-3 py-1 rounded bg-gray-700 hover:bg-purple-700 cursor-pointer"

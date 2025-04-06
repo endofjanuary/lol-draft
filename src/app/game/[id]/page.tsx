@@ -378,6 +378,7 @@ export default function GamePage() {
           onPositionChange={handlePositionChange}
           onReadyChange={handleReadyChange}
           onStartDraft={handleStartDraft}
+          nickname={nickname}
         />
       );
     } else if (phase >= 1 && phase <= 20) {
