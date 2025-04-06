@@ -406,6 +406,11 @@ export default function SoloDraftPhase({
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((position) => {
                 const pick = bluePicks.find((p) => p.position === position);
+                // 챔피언 이름 찾기
+                const championName = pick
+                  ? champions.find((c) => c.id === pick.championId)?.name ||
+                    pick.championId
+                  : "";
 
                 return (
                   <div
@@ -430,7 +435,14 @@ export default function SoloDraftPhase({
                         />
                       )}
                     </div>
-                    <span className="text-sm">블루 {position}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm">블루 {position}</span>
+                      {championName && (
+                        <span className="text-xs text-blue-300">
+                          {championName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -594,6 +606,11 @@ export default function SoloDraftPhase({
             <div className="space-y-2">
               {[1, 2, 3, 4, 5].map((position) => {
                 const pick = redPicks.find((p) => p.position === position);
+                // 챔피언 이름 찾기
+                const championName = pick
+                  ? champions.find((c) => c.id === pick.championId)?.name ||
+                    pick.championId
+                  : "";
 
                 return (
                   <div
@@ -618,7 +635,14 @@ export default function SoloDraftPhase({
                         />
                       )}
                     </div>
-                    <span className="text-sm">레드 {position}</span>
+                    <div className="flex flex-col">
+                      <span className="text-sm">레드 {position}</span>
+                      {championName && (
+                        <span className="text-xs text-red-300">
+                          {championName}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
