@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { GameInfo } from "@/types/game";
+import { useRouter } from "next/navigation";
 
 interface ResultPhaseProps {
   gameInfo: GameInfo;
@@ -15,6 +16,7 @@ export default function ResultPhase({
   onNextGame,
   isHost,
 }: ResultPhaseProps) {
+  const router = useRouter();
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
 
   // 마지막 세트인지 확인하는 로직
@@ -55,6 +57,34 @@ export default function ResultPhase({
 
     return false;
   }, [gameInfo]);
+
+  // 승패가 결정되는지 확인하는 로직
+  const isMatchDecided = useMemo(() => {
+    if (!selectedWinner) return false;
+
+    const matchFormat = gameInfo.settings.matchFormat || "bo1";
+    const blueScore = gameInfo.blueScore || 0;
+    const redScore = gameInfo.redScore || 0;
+
+    // bo1에서는 항상 승패가 결정됨
+    if (matchFormat === "bo1") {
+      return true;
+    }
+
+    // bo3에서는 한 팀이 1점이고 현재 세트에서 승리한 경우
+    if (matchFormat === "bo3") {
+      if (selectedWinner === "blue" && blueScore === 1) return true;
+      if (selectedWinner === "red" && redScore === 1) return true;
+    }
+
+    // bo5에서는 한 팀이 2점이고 현재 세트에서 승리한 경우
+    if (matchFormat === "bo5") {
+      if (selectedWinner === "blue" && blueScore === 2) return true;
+      if (selectedWinner === "red" && redScore === 2) return true;
+    }
+
+    return false;
+  }, [selectedWinner, gameInfo]);
 
   // Extract ban and pick data from gameInfo
   const blueBans: string[] = [];
@@ -129,6 +159,11 @@ export default function ResultPhase({
     if (!isFinalSet) {
       onNextGame();
     }
+  };
+
+  // 메인 페이지로 이동하는 핸들러 추가
+  const handleGoToMain = () => {
+    router.push("/");
   };
 
   // Get champion image URL from the champion ID
@@ -269,7 +304,9 @@ export default function ResultPhase({
             </button>
 
             <button
-              onClick={handleConfirmAndProceed}
+              onClick={
+                isMatchDecided ? handleGoToMain : handleConfirmAndProceed
+              }
               disabled={!isHost || !selectedWinner}
               className={`px-6 py-3 rounded-md font-bold transition-colors
                 ${
@@ -277,9 +314,13 @@ export default function ResultPhase({
                     ? "cursor-pointer"
                     : "cursor-not-allowed opacity-50"
                 }
-                bg-gray-600 hover:bg-gray-700`}
+                ${
+                  isMatchDecided
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-600 hover:bg-gray-700"
+                }`}
             >
-              {isFinalSet ? "시리즈 종료" : "다음 게임으로"}
+              {isMatchDecided ? "메인 페이지로" : "다음 게임으로"}
             </button>
 
             <button
