@@ -652,7 +652,7 @@ export default function CreateGame() {
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             ) : (
-              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
                 {champions.map((champion) => (
                   <div
                     key={champion.id}
@@ -679,7 +679,7 @@ export default function CreateGame() {
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-center mt-1 truncate w-full">
+                    <p className="text-xs text-center mt-1 break-keep whitespace-normal">
                       {champion.name}
                     </p>
                   </div>
