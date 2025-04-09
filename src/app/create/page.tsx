@@ -648,26 +648,30 @@ export default function CreateGame() {
                 {champions.map((champion) => (
                   <div
                     key={champion.id}
-                    className={`relative cursor-pointer transition-all ${
+                    className={`relative cursor-pointer transition-all flex flex-col items-center ${
                       formData.globalBans.includes(champion.id)
                         ? "ring-2 ring-red-500"
                         : ""
                     }`}
                     onClick={() => toggleChampionBan(champion.id)}
                   >
-                    <Image
-                      src={`https://ddragon.leagueoflegends.com/cdn/${formData.patchVersion}/img/champion/${champion.id}.png`}
-                      alt={champion.name}
-                      width={60}
-                      height={60}
-                      className="rounded-md"
-                    />
-                    {formData.globalBans.includes(champion.id) && (
-                      <div className="absolute top-0 right-0 bg-red-500 rounded-bl-md rounded-tr-md w-6 h-6 flex items-center justify-center">
-                        <span className="text-white text-sm font-bold">✖</span>
-                      </div>
-                    )}
-                    <p className="text-xs text-center mt-1 truncate">
+                    <div className="relative">
+                      <Image
+                        src={`https://ddragon.leagueoflegends.com/cdn/${formData.patchVersion}/img/champion/${champion.id}.png`}
+                        alt={champion.name}
+                        width={60}
+                        height={60}
+                        className="rounded-md"
+                      />
+                      {formData.globalBans.includes(champion.id) && (
+                        <div className="absolute top-0 right-0 bg-red-500 rounded-bl-md rounded-tr-md w-6 h-6 flex items-center justify-center">
+                          <span className="text-white text-sm font-bold">
+                            ✖
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-center mt-1 truncate w-full">
                       {champion.name}
                     </p>
                   </div>
