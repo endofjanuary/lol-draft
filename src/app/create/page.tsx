@@ -417,18 +417,27 @@ export default function CreateGame() {
                     : "bg-gray-800 border-gray-600 hover:bg-gray-700"
                 }`}
               >
-                일반 대회 모드
+                토너먼트 드래프트
               </button>
               <button
                 type="button"
                 onClick={() => handleModeSelection("hardFearless")}
-                className={`px-4 py-2 rounded-md border ${
+                className={`px-4 py-2 rounded-md border flex items-center gap-2 ${
                   formData.draftMode === "hardFearless"
                     ? "bg-blue-600 border-blue-400"
                     : "bg-gray-800 border-gray-600 hover:bg-gray-700"
                 }`}
               >
                 하드 피어리스
+                <div className="bg-white rounded-full p-1">
+                  <Image
+                    src="/images/lck_logo.svg"
+                    alt="LCK Logo"
+                    width={20}
+                    height={20}
+                    className="w-5 h-5"
+                  />
+                </div>
               </button>
               <button
                 type="button"
