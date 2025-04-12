@@ -171,8 +171,8 @@ export default function DraftPhase({
     const phaseData = gameInfo.status.phaseData || [];
 
     // Process real selections from phaseData
-    const actualBlueBans: string[] = [];
-    const actualRedBans: string[] = [];
+    const actualBlueBans: string[] = Array(5).fill(""); // Initialize with empty strings
+    const actualRedBans: string[] = Array(5).fill(""); // Initialize with empty strings
     const actualBluePicks: { [key: string]: string } = {};
     const actualRedPicks: { [key: string]: string } = {};
 
@@ -189,11 +189,13 @@ export default function DraftPhase({
         if (phaseNum <= 6) {
           // Phase 1,3,5 are Blue bans
           if (phaseNum % 2 === 1) {
-            actualBlueBans.push(selection);
+            const banIndex = Math.floor((phaseNum - 1) / 2);
+            actualBlueBans[banIndex] = selection;
           }
           // Phase 2,4,6 are Red bans
           else {
-            actualRedBans.push(selection);
+            const banIndex = Math.floor((phaseNum - 2) / 2);
+            actualRedBans[banIndex] = selection;
           }
         }
         // Phases 7-12 are first pick phase
