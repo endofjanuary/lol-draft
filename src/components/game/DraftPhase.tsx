@@ -318,9 +318,14 @@ export default function DraftPhase({
   const handleChampionClick = (championId: string) => {
     if (!playersTurn) return; // Only allow selection during player's turn
 
-    // Don't allow selecting banned or picked champions
+    // Don't allow selecting banned, picked, or globally banned champions
     if (bannedChampions.includes(championId)) return;
     if (Object.values(pickedChampions).includes(championId)) return;
+    if (
+      gameInfo.settings.globalBans &&
+      gameInfo.settings.globalBans.includes(championId)
+    )
+      return;
 
     console.log(`Selected champion: ${championId}`); // Debug log
 
@@ -391,7 +396,9 @@ export default function DraftPhase({
   const isChampionDisabled = (championId: string) => {
     return (
       bannedChampions.includes(championId) ||
-      Object.values(pickedChampions).includes(championId)
+      Object.values(pickedChampions).includes(championId) ||
+      (gameInfo.settings.globalBans &&
+        gameInfo.settings.globalBans.includes(championId))
     );
   };
 
