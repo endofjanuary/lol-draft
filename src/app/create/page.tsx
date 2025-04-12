@@ -23,7 +23,7 @@ export default function CreateGame() {
     draftMode: "tournament",
     playerMode: "1v1",
     tournamentSet: "bo1",
-    timerSetting: "unlimited",
+    timerSetting: "limited",
     globalBans: [] as string[],
     bannerImage: null as string | null,
   });
@@ -461,14 +461,14 @@ export default function CreateGame() {
             <div className="flex flex-wrap gap-4">
               <button
                 type="button"
-                onClick={() => handleSetSelection("bo5")}
+                onClick={() => handleSetSelection("bo1")}
                 className={`px-4 py-2 rounded-md border ${
-                  formData.tournamentSet === "bo5"
+                  formData.tournamentSet === "bo1"
                     ? "bg-blue-600 border-blue-400"
                     : "bg-gray-800 border-gray-600 hover:bg-gray-700"
                 }`}
               >
-                5판 3선승
+                단판제
               </button>
               <button
                 type="button"
@@ -483,14 +483,14 @@ export default function CreateGame() {
               </button>
               <button
                 type="button"
-                onClick={() => handleSetSelection("bo1")}
+                onClick={() => handleSetSelection("bo5")}
                 className={`px-4 py-2 rounded-md border ${
-                  formData.tournamentSet === "bo1"
+                  formData.tournamentSet === "bo5"
                     ? "bg-blue-600 border-blue-400"
                     : "bg-gray-800 border-gray-600 hover:bg-gray-700"
                 }`}
               >
-                단판제
+                5판 3선승
               </button>
             </div>
           </div>
