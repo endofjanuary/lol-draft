@@ -648,69 +648,98 @@ export default function DraftPhase({
 
           {/* Champion Selection Grid - Modified with fixed height and scrolling */}
           <div className="w-full md:w-2/4 bg-gray-900 bg-opacity-30 rounded-lg p-4 flex flex-col">
-            <h3 className="text-lg font-bold mb-4">Select Champion</h3>
-            {/* Add max-height and overflow for scrolling */}
-            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 mb-4 max-h-[400px] overflow-y-auto p-2">
-              {champions.map((champion) => (
-                <div
-                  key={champion.id}
-                  onClick={() => handleChampionClick(champion.id)}
-                  className={`
-                  relative w-12 h-12 rounded-md overflow-hidden cursor-pointer
-                  ${
-                    isChampionDisabled(champion.id)
-                      ? "opacity-30 grayscale"
-                      : ""
-                  }
-                  ${
-                    selectedChampion === champion.id
-                      ? "ring-2 ring-yellow-400"
-                      : ""
-                  }
-                  ${playersTurn ? "hover:ring-1 hover:ring-white" : ""}
-                `}
-                  title={champion.name}
-                >
-                  <Image
-                    src={getChampionImageUrl(champion.id)}
-                    alt={champion.name}
-                    width={64}
-                    height={64}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Selection UI for player's turn */}
-            {playersTurn && (
-              <div className="mt-auto flex flex-col items-center">
-                <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-800 mb-2">
-                  {selectedChampion && (
+            {position === "spectator" ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                {/* Banner Image */}
+                {gameInfo.settings.bannerImage || gameInfo.bannerImage ? (
+                  <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
                     <Image
-                      src={getChampionImageUrl(selectedChampion)}
-                      alt={selectedChampion}
-                      width={64}
-                      height={64}
-                      className="w-full h-full object-cover"
+                      src={
+                        gameInfo.settings.bannerImage ||
+                        gameInfo.bannerImage ||
+                        ""
+                      }
+                      alt="Tournament Banner"
+                      width={500}
+                      height={250}
+                      className="w-full h-full object-contain"
                     />
-                  )}
-                </div>
-                <button
-                  onClick={handleConfirmSelection}
-                  disabled={!selectedChampion}
-                  className={`
-                  px-4 py-2 rounded-md font-bold
-                  ${
-                    selectedChampion
-                      ? "bg-yellow-600 hover:bg-yellow-700"
-                      : "bg-gray-600 cursor-not-allowed opacity-50"
-                  }
-                `}
-                >
-                  선택완료
-                </button>
+                  </div>
+                ) : (
+                  <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
+                    <p className="text-gray-400">
+                      게임 배너 이미지가 표시됩니다
+                    </p>
+                  </div>
+                )}
               </div>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold mb-4">Select Champion</h3>
+                {/* Add max-height and overflow for scrolling */}
+                <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 mb-4 max-h-[400px] overflow-y-auto p-2">
+                  {champions.map((champion) => (
+                    <div
+                      key={champion.id}
+                      onClick={() => handleChampionClick(champion.id)}
+                      className={`
+                      relative w-12 h-12 rounded-md overflow-hidden cursor-pointer
+                      ${
+                        isChampionDisabled(champion.id)
+                          ? "opacity-30 grayscale"
+                          : ""
+                      }
+                      ${
+                        selectedChampion === champion.id
+                          ? "ring-2 ring-yellow-400"
+                          : ""
+                      }
+                      ${playersTurn ? "hover:ring-1 hover:ring-white" : ""}
+                    `}
+                      title={champion.name}
+                    >
+                      <Image
+                        src={getChampionImageUrl(champion.id)}
+                        alt={champion.name}
+                        width={64}
+                        height={64}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Selection UI for player's turn */}
+                {playersTurn && (
+                  <div className="mt-auto flex flex-col items-center">
+                    <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-800 mb-2">
+                      {selectedChampion && (
+                        <Image
+                          src={getChampionImageUrl(selectedChampion)}
+                          alt={selectedChampion}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <button
+                      onClick={handleConfirmSelection}
+                      disabled={!selectedChampion}
+                      className={`
+                      px-4 py-2 rounded-md font-bold
+                      ${
+                        selectedChampion
+                          ? "bg-yellow-600 hover:bg-yellow-700"
+                          : "bg-gray-600 cursor-not-allowed opacity-50"
+                      }
+                    `}
+                    >
+                      선택완료
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
