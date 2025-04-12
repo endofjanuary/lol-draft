@@ -390,6 +390,7 @@ export default function GamePage() {
           position={position}
           onSelectChampion={handleSelectChampion}
           onConfirmSelection={handleConfirmSelection}
+          socket={socket}
         />
       );
     } else if (phase === 21) {

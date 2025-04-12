@@ -6,6 +6,7 @@ import {
   getAllPositions,
   getChampionPositions,
 } from "@/utils/championPositions";
+import { Socket } from "socket.io-client";
 
 interface DraftPhaseProps {
   gameInfo: GameInfo;
@@ -13,6 +14,7 @@ interface DraftPhaseProps {
   position: string;
   onSelectChampion: (champion: string) => void;
   onConfirmSelection: () => void;
+  socket: Socket | null;
 }
 
 export default function DraftPhase({
@@ -21,8 +23,11 @@ export default function DraftPhase({
   position,
   onSelectChampion,
   onConfirmSelection,
+  socket,
 }: DraftPhaseProps) {
   const [selectedChampion, setSelectedChampion] = useState<string | null>(null);
+  const [currentPhaseSelectedChampion, setCurrentPhaseSelectedChampion] =
+    useState<string | null>(null);
   const [bannedChampions, setBannedChampions] = useState<string[]>([]);
   const [pickedChampions, setPickedChampions] = useState<{
     [key: string]: string;
@@ -246,6 +251,39 @@ export default function DraftPhase({
     }
   }, [gameInfo.status.phaseData, gameInfo.status.phase, champions]);
 
+  // champion_selected 이벤트 처리
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleChampionSelected = (data: {
+      nickname: string;
+      position: string;
+      champion: string;
+      phase: number;
+      isConfirmed: boolean;
+    }) => {
+      console.log("champion_selected 이벤트 수신:", data);
+
+      // 현재 페이즈의 선택된 챔피언을 업데이트
+      if (data.phase === gameInfo.status.phase) {
+        setCurrentPhaseSelectedChampion(data.champion);
+        if (data.nickname === nickname) {
+          setSelectedChampion(data.champion);
+        }
+        if (data.isConfirmed) {
+          onConfirmSelection();
+          setCurrentPhaseSelectedChampion(null);
+        }
+      }
+    };
+
+    socket.on("champion_selected", handleChampionSelected);
+
+    return () => {
+      socket.off("champion_selected", handleChampionSelected);
+    };
+  }, [socket, nickname, gameInfo.status.phase, onConfirmSelection]);
+
   // Determine if it's the current player's turn based on game mode, phase, and position
   const isPlayerTurn = () => {
     const phase = gameInfo.status.phase;
@@ -440,36 +478,28 @@ export default function DraftPhase({
     return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${championId}.png`;
   };
 
-  const renderTeamSlot = (team: string, position: number) => {
-    const key = `${team}${position}`;
-    const championId = team === "blue" ? bluePicks[key] : redPicks[key];
-
-    // Find champion name from its ID
-    const championName = championId
-      ? champions.find((c) => c.id === championId)?.name || championId
-      : "";
-
-    return (
-      <div className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden`}>
-        {championId && (
-          <Image
-            src={getChampionImageUrl(championId)}
-            alt={championId}
-            width={64}
-            height={64}
-            className="w-full h-full object-cover"
-          />
-        )}
-      </div>
-    );
-  };
-
   const renderBanSlot = (team: string, index: number) => {
     const bans = team === "blue" ? blueBans : redBans;
     const championId = bans[index];
+    const currentPhase = gameInfo.status.phase;
+
+    // 밴 페이즈 계산 수정
+    let banPhase;
+    if (index < 3) {
+      // 첫 번째 밴 페이즈 (1-6)
+      banPhase = team === "blue" ? index * 2 + 1 : index * 2 + 2;
+    } else {
+      // 두 번째 밴 페이즈 (13-16)
+      const secondBanIndex = index - 3;
+      banPhase =
+        team === "red" ? 13 + secondBanIndex * 2 : 14 + secondBanIndex * 2;
+    }
+    const isCurrentPhase = currentPhase === banPhase;
 
     return (
-      <div className={`w-10 h-10 rounded-md bg-gray-800 overflow-hidden`}>
+      <div
+        className={`w-10 h-10 rounded-md bg-gray-800 overflow-hidden relative`}
+      >
         {championId && (
           <div className="relative w-full h-full">
             <Image
@@ -482,6 +512,77 @@ export default function DraftPhase({
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-full h-0.5 bg-red-500 rotate-45 transform origin-center"></div>
             </div>
+          </div>
+        )}
+        {isCurrentPhase && currentPhaseSelectedChampion && (
+          <div className="absolute inset-0 flex">
+            <Image
+              src={getChampionImageUrl(currentPhaseSelectedChampion)}
+              alt={currentPhaseSelectedChampion}
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 champion-highlight"></div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderTeamSlot = (team: string, position: number) => {
+    const key = `${team}${position}`;
+    const championId = team === "blue" ? bluePicks[key] : redPicks[key];
+    const currentPhase = gameInfo.status.phase;
+
+    // 픽 페이즈 계산 수정
+    let pickPhase;
+    if (position <= 3) {
+      // 첫 번째 픽 페이즈 (7-12)
+      if (team === "blue") {
+        if (position === 1) pickPhase = 7;
+        else if (position === 2) pickPhase = 10;
+        else if (position === 3) pickPhase = 11;
+      } else {
+        if (position === 1) pickPhase = 8;
+        else if (position === 2) pickPhase = 9;
+        else if (position === 3) pickPhase = 12;
+      }
+    } else {
+      // 두 번째 픽 페이즈 (17-20)
+      if (team === "blue") {
+        if (position === 4) pickPhase = 18;
+        else if (position === 5) pickPhase = 19;
+      } else {
+        if (position === 4) pickPhase = 17;
+        else if (position === 5) pickPhase = 20;
+      }
+    }
+    const isCurrentPhase = currentPhase === pickPhase;
+
+    return (
+      <div
+        className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden relative`}
+      >
+        {championId && (
+          <Image
+            src={getChampionImageUrl(championId)}
+            alt={championId}
+            width={64}
+            height={64}
+            className="w-full h-full object-cover"
+          />
+        )}
+        {isCurrentPhase && currentPhaseSelectedChampion && (
+          <div className="absolute inset-0 flex">
+            <Image
+              src={getChampionImageUrl(currentPhaseSelectedChampion)}
+              alt={currentPhaseSelectedChampion}
+              width={64}
+              height={64}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 champion-highlight"></div>
           </div>
         )}
       </div>
@@ -580,6 +681,22 @@ export default function DraftPhase({
   // Optimize the render to prevent unnecessary re-renders of the timer
   return (
     <div className="min-h-screen bg-[#030C28] text-white p-4 flex flex-col items-center justify-center">
+      <style jsx global>{`
+        @keyframes fadeInOut {
+          0% {
+            background-color: rgba(0, 0, 0, 0);
+          }
+          50% {
+            background-color: rgba(0, 0, 0, 0.6);
+          }
+          100% {
+            background-color: rgba(0, 0, 0, 0);
+          }
+        }
+        .champion-highlight {
+          animation: fadeInOut 1.5s infinite;
+        }
+      `}</style>
       {/* Use max-w container to limit overall width */}
       <div className="w-full max-w-7xl">
         {/* Phase indicator */}
@@ -626,20 +743,7 @@ export default function DraftPhase({
                     key={`blue-ban-${index}`}
                     className="w-10 h-10 rounded-md bg-gray-800 overflow-hidden"
                   >
-                    {blueBans[index] && (
-                      <div className="relative w-full h-full">
-                        <Image
-                          src={getChampionImageUrl(blueBans[index])}
-                          alt={blueBans[index]}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover opacity-50"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-full h-0.5 bg-red-500 rotate-45 transform origin-center"></div>
-                        </div>
-                      </div>
-                    )}
+                    {renderBanSlot("blue", index)}
                   </div>
                 ))}
               </div>
@@ -840,20 +944,7 @@ export default function DraftPhase({
                     key={`red-ban-${index}`}
                     className="w-10 h-10 rounded-md bg-gray-800 overflow-hidden"
                   >
-                    {redBans[index] && (
-                      <div className="relative w-full h-full">
-                        <Image
-                          src={getChampionImageUrl(redBans[index])}
-                          alt={redBans[index]}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover opacity-50"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-full h-0.5 bg-red-500 rotate-45 transform origin-center"></div>
-                        </div>
-                      </div>
-                    )}
+                    {renderBanSlot("red", index)}
                   </div>
                 ))}
               </div>
