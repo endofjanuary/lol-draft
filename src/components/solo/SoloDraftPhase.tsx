@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Timer from "../game/Timer"; // Import the Timer component
+import {
+  getAllPositions,
+  getChampionPositions,
+} from "@/utils/championPositions";
+import { ChampionPosition } from "@/types/game";
 
 interface ChampionData {
   id: string;
@@ -54,7 +59,7 @@ export default function SoloDraftPhase({
   const [champions, setChampions] = useState<ChampionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState<ChampionPosition | null>(null);
   const [selectedChampion, setSelectedChampion] = useState<string | null>(
     externalSelectedChampion
   );
@@ -213,7 +218,10 @@ export default function SoloDraftPhase({
     ];
   }, [bluePicks, redPicks]);
 
-  // Filter champions based on search term and tag filter only (don't exclude banned/picked)
+  // Available champion positions for filtering
+  const championPositions = getAllPositions();
+
+  // Filter champions based on search term and position filter
   const filteredChampions = useMemo(() => {
     return champions.filter((champion) => {
       // Filter by search term
@@ -224,12 +232,11 @@ export default function SoloDraftPhase({
         return false;
       }
 
-      // Filter by tag
-      if (tagFilter && !champion.tags.includes(tagFilter)) {
+      // Filter by position
+      if (tagFilter && !getChampionPositions(champion.id).includes(tagFilter)) {
         return false;
       }
 
-      // Don't filter out banned or picked champions anymore
       return true;
     });
   }, [champions, searchTerm, tagFilter]);
@@ -301,36 +308,6 @@ export default function SoloDraftPhase({
     if (selectedChampion) {
       onConfirmSelection();
       setSelectedChampion(null); // 선택 초기화
-    }
-  };
-
-  // Available champion tags for filtering
-  const championTags = [
-    "Fighter",
-    "Tank",
-    "Mage",
-    "Assassin",
-    "Marksman",
-    "Support",
-  ];
-
-  // Translate English tag names to Korean
-  const translateTag = (tag: string) => {
-    switch (tag) {
-      case "Fighter":
-        return "전사";
-      case "Tank":
-        return "탱커";
-      case "Mage":
-        return "마법사";
-      case "Assassin":
-        return "암살자";
-      case "Marksman":
-        return "원거리";
-      case "Support":
-        return "서포터";
-      default:
-        return tag;
     }
   };
 
@@ -473,13 +450,15 @@ export default function SoloDraftPhase({
                 />
                 <select
                   value={tagFilter || ""}
-                  onChange={(e) => setTagFilter(e.target.value || null)}
+                  onChange={(e) =>
+                    setTagFilter((e.target.value as ChampionPosition) || null)
+                  }
                   className="p-2 rounded-md bg-gray-700 border border-gray-600"
                 >
-                  <option value="">전체 역할군</option>
-                  {championTags.map((tag) => (
-                    <option key={tag} value={tag}>
-                      {translateTag(tag)}
+                  <option value="">전체 포지션</option>
+                  {championPositions.map((position) => (
+                    <option key={position} value={position}>
+                      {position}
                     </option>
                   ))}
                 </select>

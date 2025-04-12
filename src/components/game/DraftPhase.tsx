@@ -1,7 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { GameInfo, ChampionData } from "@/types/game"; // Import from shared types
+import { GameInfo, ChampionData, ChampionPosition } from "@/types/game"; // Import from shared types
 import Timer from "./Timer"; // Import the Timer component
+import {
+  getAllPositions,
+  getChampionPositions,
+} from "@/utils/championPositions";
 
 interface DraftPhaseProps {
   gameInfo: GameInfo;
@@ -43,6 +47,32 @@ export default function DraftPhase({
   const [availableChampions, setAvailableChampions] = useState<ChampionData[]>(
     []
   );
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [tagFilter, setTagFilter] = useState<ChampionPosition | null>(null);
+
+  // Available champion positions for filtering
+  const championPositions = getAllPositions();
+
+  // Filter champions based on search term and position filter
+  const filteredChampions = useMemo(() => {
+    return champions.filter((champion) => {
+      // Filter by search term
+      if (
+        searchTerm &&
+        !champion.name.toLowerCase().includes(searchTerm.toLowerCase())
+      ) {
+        return false;
+      }
+
+      // Filter by position
+      if (tagFilter && !getChampionPositions(champion.id).includes(tagFilter)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [champions, searchTerm, tagFilter]);
 
   // Fetch champion data from Riot API
   useEffect(() => {
@@ -653,7 +683,7 @@ export default function DraftPhase({
             </div>
           </div>
 
-          {/* Champion Selection Grid - Modified with fixed height and scrolling */}
+          {/* Champion Selection Grid */}
           <div className="w-full md:w-2/4 bg-gray-900 bg-opacity-30 rounded-lg p-4 flex flex-col">
             {position === "spectator" ? (
               <div className="flex flex-col items-center justify-center h-full">
@@ -683,37 +713,75 @@ export default function DraftPhase({
             ) : (
               <>
                 <h3 className="text-lg font-bold mb-4">Select Champion</h3>
-                {/* Add max-height and overflow for scrolling */}
-                <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 mb-4 max-h-[400px] overflow-y-auto p-2">
-                  {champions.map((champion) => (
-                    <div
-                      key={champion.id}
-                      onClick={() => handleChampionClick(champion.id)}
-                      className={`
-                      relative w-12 h-12 rounded-md overflow-hidden cursor-pointer
-                      ${
-                        isChampionDisabled(champion.id)
-                          ? "opacity-30 grayscale"
-                          : ""
-                      }
-                      ${
-                        selectedChampion === champion.id
-                          ? "ring-2 ring-yellow-400"
-                          : ""
-                      }
-                      ${playersTurn ? "hover:ring-1 hover:ring-white" : ""}
-                    `}
-                      title={champion.name}
-                    >
-                      <Image
-                        src={getChampionImageUrl(champion.id)}
-                        alt={champion.name}
-                        width={64}
-                        height={64}
-                        className="w-full h-full object-cover"
-                      />
+
+                {/* Search and filter controls */}
+                <div className="mb-4 flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="챔피언 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-grow p-2 rounded-md bg-gray-700 border border-gray-600"
+                  />
+                  <select
+                    value={tagFilter || ""}
+                    onChange={(e) =>
+                      setTagFilter((e.target.value as ChampionPosition) || null)
+                    }
+                    className="p-2 rounded-md bg-gray-700 border border-gray-600"
+                  >
+                    <option value="">전체 포지션</option>
+                    {championPositions.map((position) => (
+                      <option key={position} value={position}>
+                        {position}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Champions grid */}
+                <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2 mb-4 max-h-[400px] overflow-y-auto p-2">
+                  {filteredChampions.map((champion) => {
+                    const isUnavailable = isChampionDisabled(champion.id);
+                    return (
+                      <div
+                        key={champion.id}
+                        className={`relative cursor-pointer transition-all ${
+                          isUnavailable
+                            ? "cursor-not-allowed"
+                            : "hover:scale-105"
+                        } ${
+                          selectedChampion === champion.id
+                            ? "ring-2 ring-yellow-400"
+                            : ""
+                        }`}
+                        onClick={() => handleChampionClick(champion.id)}
+                      >
+                        <Image
+                          src={getChampionImageUrl(champion.id)}
+                          alt={champion.name}
+                          width={60}
+                          height={60}
+                          className={`w-full rounded-md ${
+                            isUnavailable ? "grayscale opacity-40" : ""
+                          }`}
+                        />
+                        <p
+                          className={`text-xs text-center mt-1 truncate ${
+                            isUnavailable ? "text-gray-500" : ""
+                          }`}
+                        >
+                          {champion.name}
+                        </p>
+                      </div>
+                    );
+                  })}
+
+                  {filteredChampions.length === 0 && (
+                    <div className="col-span-full text-center py-8 text-gray-400">
+                      조건에 맞는 챔피언이 없습니다
                     </div>
-                  ))}
+                  )}
                 </div>
 
                 {/* Selection UI for player's turn */}
@@ -734,13 +802,13 @@ export default function DraftPhase({
                       onClick={handleConfirmSelection}
                       disabled={!selectedChampion}
                       className={`
-                      px-4 py-2 rounded-md font-bold
-                      ${
-                        selectedChampion
-                          ? "bg-yellow-600 hover:bg-yellow-700"
-                          : "bg-gray-600 cursor-not-allowed opacity-50"
-                      }
-                    `}
+                        px-4 py-2 rounded-md font-bold
+                        ${
+                          selectedChampion
+                            ? "bg-yellow-600 hover:bg-yellow-700"
+                            : "bg-gray-600 cursor-not-allowed opacity-50"
+                        }
+                      `}
                     >
                       선택완료
                     </button>

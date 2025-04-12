@@ -45,6 +45,11 @@ export interface GameInfo {
 }
 
 /**
+ * 챔피언 포지션 타입
+ */
+export type ChampionPosition = "탑" | "정글" | "미드" | "원딜" | "서폿";
+
+/**
  * Champion data from Riot API
  */
 export interface ChampionData {
@@ -54,4 +59,5 @@ export interface ChampionData {
   image: {
     full: string; // Filename of champion image
   };
+  positions: ChampionPosition[]; // Champion positions
 }
