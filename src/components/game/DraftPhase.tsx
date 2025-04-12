@@ -805,12 +805,14 @@ export default function DraftPhase({
                         px-4 py-2 rounded-md font-bold
                         ${
                           selectedChampion
-                            ? "bg-yellow-600 hover:bg-yellow-700"
+                            ? currentTurnPosition.startsWith("blue")
+                              ? "bg-blue-600 hover:bg-blue-700"
+                              : "bg-red-600 hover:bg-red-700"
                             : "bg-gray-600 cursor-not-allowed opacity-50"
                         }
                       `}
                     >
-                      선택완료
+                      {getCurrentAction()} 확정하기
                     </button>
                   </div>
                 )}
