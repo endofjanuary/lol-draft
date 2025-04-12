@@ -285,7 +285,7 @@ export default function ResultPhase({
           ) : (
             <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
               <p className="text-gray-400">
-                Game result image will be displayed here
+                Game Banner image will be displayed here
               </p>
             </div>
           )}
