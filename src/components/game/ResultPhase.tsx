@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { GameInfo } from "@/types/game";
+import { GameInfo, ChampionData } from "@/types/game";
 import { useRouter } from "next/navigation";
 
 interface ResultPhaseProps {
@@ -18,6 +18,34 @@ export default function ResultPhase({
 }: ResultPhaseProps) {
   const router = useRouter();
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
+  const [champions, setChampions] = useState<ChampionData[]>([]);
+
+  // Fetch champion data from Riot API
+  useEffect(() => {
+    const fetchChampions = async () => {
+      try {
+        const version = gameInfo.settings.version;
+        const language = "ko_KR";
+
+        const RIOT_BASE_URL = "https://ddragon.leagueoflegends.com";
+        const url = `${RIOT_BASE_URL}/cdn/${version}/data/${language}/champion.json`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch champions: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const championsArray = Object.values(data.data) as ChampionData[];
+        championsArray.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+        setChampions(championsArray);
+      } catch (error) {
+        console.error("Error fetching champion data:", error);
+      }
+    };
+
+    fetchChampions();
+  }, [gameInfo.settings.version]);
 
   // 마지막 세트인지 확인하는 로직
   const isFinalSet = useMemo(() => {
@@ -176,18 +204,36 @@ export default function ResultPhase({
   const renderTeamSlot = (team: string, position: number) => {
     const key = `${team}${position}`;
     const championId = team === "blue" ? bluePicks[key] : redPicks[key];
+    const championName = championId
+      ? champions.find((c: ChampionData) => c.id === championId)?.name ||
+        championId
+      : "";
 
     return (
-      <div className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden`}>
-        {championId && (
-          <Image
-            src={getChampionImageUrl(championId)}
-            alt={championId}
-            width={64}
-            height={64}
-            className="w-full h-full object-cover"
-          />
-        )}
+      <div className="flex items-center gap-2">
+        <div className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden`}>
+          {championId && (
+            <Image
+              src={getChampionImageUrl(championId)}
+              alt={championId}
+              width={64}
+              height={64}
+              className="w-full h-full object-cover"
+            />
+          )}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm">{`${team.toUpperCase()} ${position}`}</span>
+          {championName && (
+            <span
+              className={`text-xs ${
+                team === "blue" ? "text-blue-300" : "text-red-300"
+              }`}
+            >
+              {championName}
+            </span>
+          )}
+        </div>
       </div>
     );
   };
@@ -260,7 +306,6 @@ export default function ResultPhase({
                   className="flex items-center gap-2"
                 >
                   {renderTeamSlot("blue", position)}
-                  <span className="text-sm">{`BLUE ${position}`}</span>
                 </div>
               ))}
             </div>
@@ -364,7 +409,6 @@ export default function ResultPhase({
               {[1, 2, 3, 4, 5].map((position) => (
                 <div key={`red${position}`} className="flex items-center gap-2">
                   {renderTeamSlot("red", position)}
-                  <span className="text-sm">{`RED ${position}`}</span>
                 </div>
               ))}
             </div>
