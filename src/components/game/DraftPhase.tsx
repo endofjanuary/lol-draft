@@ -182,7 +182,6 @@ export default function DraftPhase({
     const actualRedPicks: { [key: string]: string } = {};
 
     // Process each phase's data from gameInfo
-    // Note: phaseData[0] is empty (phase 0), phaseData[1] is for phase 1, etc.
     for (
       let phaseNum = 1;
       phaseNum <= 20 && phaseNum < phaseData.length;
@@ -216,11 +215,13 @@ export default function DraftPhase({
         else if (phaseNum >= 13 && phaseNum <= 16) {
           // Phase 13,15 are Red bans
           if (phaseNum % 2 === 1) {
-            actualRedBans.push(selection);
+            const banIndex = 3 + Math.floor((phaseNum - 13) / 2);
+            actualRedBans[banIndex] = selection;
           }
           // Phase 14,16 are Blue bans
           else {
-            actualBlueBans.push(selection);
+            const banIndex = 3 + Math.floor((phaseNum - 14) / 2);
+            actualBlueBans[banIndex] = selection;
           }
         }
         // Phases 17-20 are second pick phase
@@ -491,8 +492,11 @@ export default function DraftPhase({
     } else {
       // 두 번째 밴 페이즈 (13-16)
       const secondBanIndex = index - 3;
-      banPhase =
-        team === "red" ? 13 + secondBanIndex * 2 : 14 + secondBanIndex * 2;
+      if (team === "red") {
+        banPhase = 13 + secondBanIndex * 2;
+      } else {
+        banPhase = 14 + secondBanIndex * 2;
+      }
     }
     const isCurrentPhase = currentPhase === banPhase;
 
