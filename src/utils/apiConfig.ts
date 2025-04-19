@@ -2,26 +2,20 @@
  * Determines the base API URL from environment variables.
  * This approach handles different environments including Netlify deployments.
  */
-export const getApiBaseUrl = (): string => {
-  // Check if we're running on Netlify
-  const isNetlify =
-    typeof window !== "undefined" &&
-    window.location.hostname.includes("netlify.app");
+export function getApiBaseUrl(): string {
+  // 환경 변수에서 API URL을 가져옵니다
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // If we're on Netlify and the env var is missing, use an empty string
-  if (isNetlify && !process.env.NEXT_PUBLIC_API_URL) {
-    console.warn(
-      "Running on Netlify with missing env variable. API URL is empty."
-    );
-    return "";
-  }
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  // 환경 변수가 설정되지 않은 경우 기본값을 사용합니다
   if (!apiUrl) {
-    console.warn("API URL is empty. Please check your environment variables.");
+    console.warn(
+      "NEXT_PUBLIC_API_URL이 설정되지 않았습니다. 기본 URL을 사용합니다."
+    );
+    return "http://localhost:8000";
   }
+
   return apiUrl;
-};
+}
 
 /**
  * Determines the Socket.io connection URL based on the API base URL.

@@ -219,6 +219,8 @@ export default function CreateGame() {
       console.log("Creating game with options:", requestBody);
 
       const apiBaseUrl = getApiBaseUrl();
+      console.log("API URL:", apiBaseUrl);
+
       const response = await fetch(`${apiBaseUrl}/games`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -226,20 +228,27 @@ export default function CreateGame() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "게임 생성에 실패했습니다.");
+        // 상세한 에러 메시지를 추출하려고 시도합니다
+        let errorDetail;
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.detail || `서버 오류 (${response.status})`;
+        } catch (e) {
+          errorDetail = `서버 오류 (${response.status})`;
+        }
+
+        throw new Error(`게임 생성 실패: ${errorDetail}`);
       }
 
       const gameData = await response.json();
-      console.log("Game created successfully:", gameData);
-
+      console.log("게임 생성 성공:", gameData);
       router.push(`/game/${gameData.gameCode}`);
     } catch (error) {
-      console.error("Failed to create game:", error);
+      console.error("게임 생성 중 오류 발생:", error);
       setApiError(
         error instanceof Error
           ? error.message
-          : "게임 생성 중 오류가 발생했습니다."
+          : "알 수 없는 오류가 발생했습니다."
       );
     } finally {
       setIsSubmitting(false);

@@ -11,7 +11,8 @@ interface LobbyPhaseProps {
   onPositionChange: (position: string) => void;
   onReadyChange: (isReady: boolean) => void;
   onStartDraft: () => void;
-  nickname?: string; // 현재 사용자의 닉네임 추가
+  nickname?: string; // 현재 사용자의 닉네임
+  clientId?: string; // 현재 사용자의 클라이언트 ID 추가
 }
 
 export default function LobbyPhase({
@@ -23,7 +24,8 @@ export default function LobbyPhase({
   onPositionChange,
   onReadyChange,
   onStartDraft,
-  nickname = "", // 기본값 추가
+  nickname = "",
+  clientId = "", // 기본값 추가
 }: LobbyPhaseProps) {
   const [isReady, setIsReady] = useState(false);
   const [prevPosition, setPrevPosition] = useState(position);
@@ -113,10 +115,20 @@ export default function LobbyPhase({
     }
   };
 
+  // 현재 사용자인지 체크하는 함수 (닉네임과 clientId 모두 사용)
+  const isCurrentUser = (player: Player) => {
+    // clientId가 있으면 그것으로 비교, 없으면 닉네임으로 비교
+    if (clientId && player.clientId) {
+      return player.clientId === clientId;
+    }
+    // 하위 호환성을 위해 닉네임으로도 비교
+    return player.nickname === nickname;
+  };
+
   // Generate team slots based on game type
   const renderTeamSlots = () => {
     const slots = [];
-    const is5v5 = gameInfo.settings.playerType === "5v5"; // Updated to use settings.playerType
+    const is5v5 = gameInfo.settings.playerType === "5v5";
     const positionsPerTeam = is5v5 ? 5 : 1;
 
     // Blue team slots
@@ -124,9 +136,9 @@ export default function LobbyPhase({
       const pos = `blue${i}`;
       const player = players.find((p) => p.position === pos);
       const isCurrentPlayer = position === pos;
-      const isPlayerHost = player?.isHost || false; // Check if this player is the host
+      const isPlayerHost = player?.isHost || false;
       const isCurrentPlayerReady = isCurrentPlayer && isReady;
-      const canChangePosition = !isReady; // 준비 상태가 아닐 때만 이동 가능
+      const canChangePosition = !isReady;
 
       slots.push(
         <div
@@ -172,7 +184,7 @@ export default function LobbyPhase({
           <div className="mt-1 text-lg">
             {player ? (
               <span className={isCurrentPlayer ? "font-bold" : ""}>
-                {player.nickname} {isCurrentPlayer && "(나)"}
+                {player.nickname} {isCurrentUser(player) && "(나)"}
               </span>
             ) : (
               "빈 자리"
@@ -187,9 +199,9 @@ export default function LobbyPhase({
       const pos = `red${i}`;
       const player = players.find((p) => p.position === pos);
       const isCurrentPlayer = position === pos;
-      const isPlayerHost = player?.isHost || false; // Check if this player is the host
+      const isPlayerHost = player?.isHost || false;
       const isCurrentPlayerReady = isCurrentPlayer && isReady;
-      const canChangePosition = !isReady; // 준비 상태가 아닐 때만 이동 가능
+      const canChangePosition = !isReady;
 
       slots.push(
         <div
@@ -235,7 +247,7 @@ export default function LobbyPhase({
           <div className="mt-1 text-lg">
             {player ? (
               <span className={isCurrentPlayer ? "font-bold" : ""}>
-                {player.nickname} {isCurrentPlayer && "(나)"}
+                {player.nickname} {isCurrentUser(player) && "(나)"}
               </span>
             ) : (
               "빈 자리"
@@ -338,20 +350,20 @@ export default function LobbyPhase({
           {players
             .filter((p) => p.position === "spectator")
             .map((spectator, index) => {
-              // 현재 사용자 닉네임과 관전자 닉네임 직접 비교
-              const isCurrentUser = nickname === spectator.nickname;
+              // 현재 사용자 여부 확인에 isCurrentUser 함수 사용
+              const isSpectatorCurrentUser = isCurrentUser(spectator);
 
               return (
                 <div
                   key={index}
                   className={`px-3 py-1 rounded ${
-                    isCurrentUser
+                    isSpectatorCurrentUser
                       ? "bg-purple-700 border border-yellow-300"
                       : "bg-gray-700"
                   } flex items-center gap-1`}
                 >
-                  <span className={isCurrentUser ? "font-bold" : ""}>
-                    {spectator.nickname} {isCurrentUser && "(나)"}
+                  <span className={isSpectatorCurrentUser ? "font-bold" : ""}>
+                    {spectator.nickname} {isSpectatorCurrentUser && "(나)"}
                   </span>
                   {spectator.isHost && (
                     <span className="text-yellow-400 ml-1">👑</span>

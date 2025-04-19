@@ -17,6 +17,19 @@ interface DraftPhaseProps {
   socket: Socket | null;
 }
 
+// mapTagToPosition 함수를 컴포넌트 외부로 이동
+function mapTagToPosition(tag: string): ChampionPosition {
+  const tagToPosition: Record<string, ChampionPosition> = {
+    Fighter: "탑",
+    Tank: "탑",
+    Assassin: "미드",
+    Mage: "미드",
+    Marksman: "원딜",
+    Support: "서폿",
+  };
+  return tagToPosition[tag] || "미드";
+}
+
 export default function DraftPhase({
   gameInfo,
   nickname,
@@ -36,7 +49,7 @@ export default function DraftPhase({
 
   // New state for storing champion data from Riot API
   const [champions, setChampions] = useState<ChampionData[]>([]);
-  const [isLoadingChampions, setIsLoadingChampions] = useState(true);
+  const [isLoadingChampions, setIsLoadingChampions] = useState(false);
   const [championError, setChampionError] = useState<string | null>(null);
 
   // States for selected champions
@@ -81,36 +94,98 @@ export default function DraftPhase({
 
   // Fetch champion data from Riot API
   useEffect(() => {
+    console.log("DraftPhase: 컴포넌트 마운트 또는 의존성 변경됨");
+
+    // 로딩 상태 체크 (이미 로딩 중이라면 중복 요청 방지)
+    if (isLoadingChampions) {
+      console.log("이미 챔피언 데이터를 로딩 중입니다");
+      return;
+    }
+
+    // 이미 챔피언 데이터가 있는 경우 다시 로드하지 않음
+    if (champions.length > 0) {
+      console.log("이미 챔피언 데이터가 있습니다:", champions.length);
+      return;
+    }
+
     const fetchChampions = async () => {
+      console.log("Fetching champion data...");
+      setIsLoadingChampions(true);
+      setChampionError(null);
+
       try {
-        setIsLoadingChampions(true);
+        // 게임 설정에서 버전 정보를 가져오거나 기본값 사용
+        let patchVersion = "latest";
 
-        // Use the game version from gameInfo settings
-        const version = gameInfo.settings.version;
-        const language = "ko_KR"; // Set to Korean language, can be made configurable
+        if (
+          gameInfo?.settings?.version &&
+          gameInfo.settings.version !== "latest"
+        ) {
+          patchVersion = gameInfo.settings.version;
+          console.log("Using game settings version:", patchVersion);
+        } else {
+          // 최신 버전 정보를 가져옴
+          try {
+            console.log("최신 버전 정보 가져오기 시도...");
+            const versionsResponse = await fetch(
+              "https://ddragon.leagueoflegends.com/api/versions.json"
+            );
+            if (!versionsResponse.ok) {
+              throw new Error(
+                `Failed to fetch versions: ${versionsResponse.status}`
+              );
+            }
+            const versions = await versionsResponse.json();
+            patchVersion = versions[0]; // 첫 번째가 최신 버전
+            console.log("Using latest patch version:", patchVersion);
+          } catch (error) {
+            console.error("Error fetching versions:", error);
+            // 버전 정보를 가져오는 데 실패하면 하드코딩된 최신 버전 사용
+            patchVersion = "13.24.1";
+            console.log("Using fallback version:", patchVersion);
+          }
+        }
 
-        const RIOT_BASE_URL = "https://ddragon.leagueoflegends.com";
-        const url = `${RIOT_BASE_URL}/cdn/${version}/data/${language}/champion.json`;
+        // 챔피언 데이터 가져오기
+        console.log(
+          `챔피언 데이터 요청 URL: https://ddragon.leagueoflegends.com/cdn/${patchVersion}/data/ko_KR/champion.json`
+        );
+        const response = await fetch(
+          `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/data/ko_KR/champion.json`
+        );
 
-        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`Failed to fetch champions: ${response.status}`);
         }
 
         const data = await response.json();
 
-        // Convert the data object to an array of champions
-        const championsArray = Object.values(data.data) as ChampionData[];
+        // 챔피언 데이터 변환 및 정렬
+        const championsArray = Object.values(data.data).map((champion: any) => {
+          const championData: ChampionData = {
+            id: champion.id,
+            key: champion.key,
+            name: champion.name,
+            image: champion.image,
+            positions:
+              champion.tags && Array.isArray(champion.tags)
+                ? champion.tags.map((tag: string) => mapTagToPosition(tag))
+                : ["미드"], // 기본 포지션
+          };
+          return championData;
+        });
 
-        // Sort champions by name according to the requested language
-        championsArray.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+        championsArray.sort((a: any, b: any) =>
+          a.name.localeCompare(b.name, "ko")
+        );
 
+        console.log(`챔피언 ${championsArray.length}개 로드 완료`);
         setChampions(championsArray);
         setAvailableChampions(championsArray); // Initialize available champions
       } catch (error) {
         console.error("Error fetching champion data:", error);
         setChampionError(
-          error instanceof Error ? error.message : "Failed to load champions"
+          error instanceof Error ? error.message : "Unknown error"
         );
       } finally {
         setIsLoadingChampions(false);
@@ -118,7 +193,7 @@ export default function DraftPhase({
     };
 
     fetchChampions();
-  }, [gameInfo.settings.version]);
+  }, []); // 빈 의존성 배열로 컴포넌트 마운트 시 한 번만 실행
 
   // Update available champions whenever bans or picks change
   useEffect(() => {
@@ -475,7 +550,7 @@ export default function DraftPhase({
 
   // Get champion image URL from the champion ID
   const getChampionImageUrl = (championId: string) => {
-    const version = gameInfo.settings.version;
+    const version = gameInfo.settings?.version || "13.24.1";
     return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${championId}.png`;
   };
 

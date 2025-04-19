@@ -10,6 +10,7 @@ export interface Player {
   position: string;
   isReady: boolean;
   isHost: boolean;
+  clientId?: string; // 클라이언트 식별을 위한 고유 ID
 }
 
 /**
