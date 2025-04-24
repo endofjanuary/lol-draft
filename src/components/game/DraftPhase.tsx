@@ -195,56 +195,91 @@ export default function DraftPhase({
     fetchChampions();
   }, []); // 빈 의존성 배열로 컴포넌트 마운트 시 한 번만 실행
 
-  // 페이즈 변경 이벤트 수신 및 처리하는 이펙트 추가
+  // Track phase change and update UI accordingly
   useEffect(() => {
-    // 페이즈 변경 이벤트 리스너
-    const handlePhaseChanged = (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        fromPhase: number;
-        toPhase: number;
-      }>;
-      console.log("Phase changed event received:", customEvent.detail);
+    const prevPhaseRef = { current: gameInfo?.status?.phase || 0 };
 
-      // 페이즈가 변경될 때 즉시 선택된 챔피언 상태 초기화
+    if (!gameInfo?.status) return;
+
+    const currentPhase = gameInfo.status.phase;
+    const previousPhase = prevPhaseRef.current;
+
+    console.log(`페이즈 변경: ${previousPhase} -> ${currentPhase}`);
+
+    // 페이즈가 변경되면 선택 상태 초기화
+    if (previousPhase !== currentPhase) {
+      console.log("새 페이즈로 전환: 선택 상태 초기화");
       setSelectedChampion(null);
       setCurrentPhaseSelectedChampion(null);
       setSelectionSent(false);
+    }
+
+    prevPhaseRef.current = currentPhase;
+
+    // 새로운 페이즈에 대한 플레이어 턴 계산
+    // 현재 턴 위치 업데이트
+    const updatePlayersTurn = (phase: number) => {
+      // Ban phase 1 (blue→red→blue→red→blue→red)
+      if (phase >= 1 && phase <= 6) {
+        setCurrentTurnPosition(phase % 2 === 1 ? "blue1" : "red1");
+      }
+      // Pick phase 1 (blue→red→red→blue→blue→red)
+      else if (phase >= 7 && phase <= 12) {
+        if (phase === 7) setCurrentTurnPosition("blue1");
+        else if (phase === 8) setCurrentTurnPosition("red1");
+        else if (phase === 9) setCurrentTurnPosition("red2");
+        else if (phase === 10) setCurrentTurnPosition("blue2");
+        else if (phase === 11) setCurrentTurnPosition("blue3");
+        else if (phase === 12) setCurrentTurnPosition("red3");
+      }
+      // Ban phase 2 (red→blue→red→blue)
+      else if (phase >= 13 && phase <= 16) {
+        setCurrentTurnPosition(phase % 2 === 0 ? "blue1" : "red1");
+      }
+      // Pick phase 2 (red→blue→blue→red)
+      else if (phase >= 17 && phase <= 20) {
+        if (phase === 17) setCurrentTurnPosition("red4");
+        else if (phase === 18) setCurrentTurnPosition("blue4");
+        else if (phase === 19) setCurrentTurnPosition("blue5");
+        else if (phase === 20) setCurrentTurnPosition("red5");
+      }
     };
 
-    // 이벤트 리스너 등록
-    window.addEventListener("phaseChanged", handlePhaseChanged);
+    // 챔피언 목록 업데이트 함수
+    const updateAvailableChampions = () => {
+      if (champions.length === 0) return;
 
-    // 컴포넌트 언마운트 시 이벤트 리스너 제거
-    return () => {
-      window.removeEventListener("phaseChanged", handlePhaseChanged);
-    };
-  }, []);
+      // Filter out banned and picked champions
+      const allBannedChampions = [...blueBans, ...redBans];
+      const allPickedChampions = Object.values({ ...bluePicks, ...redPicks });
 
-  // 선택 초기화 이벤트 수신 및 처리하는 이펙트 추가
-  useEffect(() => {
-    // 선택 초기화 이벤트 리스너
-    const handleResetSelections = () => {
-      console.log(
-        "Reset selections event received, clearing selections immediately"
+      const availableChamps = champions.filter(
+        (champion) =>
+          !allBannedChampions.includes(champion.id) &&
+          !allPickedChampions.includes(champion.id)
       );
 
-      // 모든 선택 상태 즉시 초기화 (서버에 요청하기 전)
-      setSelectedChampion(null);
-      setCurrentPhaseSelectedChampion(null);
-      setSelectionSent(false);
+      setAvailableChampions(availableChamps);
     };
 
-    // 이벤트 리스너 등록
-    window.addEventListener("resetSelections", handleResetSelections);
-
-    // 컴포넌트 언마운트 시 이벤트 리스너 제거
-    return () => {
-      window.removeEventListener("resetSelections", handleResetSelections);
-    };
-  }, []);
+    updatePlayersTurn(currentPhase);
+    updateAvailableChampions();
+  }, [
+    gameInfo?.status?.phase,
+    champions,
+    blueBans,
+    redBans,
+    bluePicks,
+    redPicks,
+  ]);
 
   // Update available champions whenever bans or picks change
   useEffect(() => {
+    updateAvailableChampions();
+  }, [blueBans, redBans, bluePicks, redPicks, champions]);
+
+  // 챔피언 목록 업데이트 함수
+  const updateAvailableChampions = () => {
     if (champions.length === 0) return;
 
     // Filter out banned and picked champions
@@ -258,14 +293,14 @@ export default function DraftPhase({
     );
 
     setAvailableChampions(availableChamps);
-  }, [champions, blueBans, redBans, bluePicks, redPicks]);
+  };
 
   // Set the current turn position based on the phase
   useEffect(() => {
-    // 이전 페이즈 기록 - 디버깅 목적
-    console.log(`Phase changed: ${gameInfo.status.phase}`);
+    // 디버깅을 위해 페이즈 변경 로깅
+    console.log(`Phase changed to: ${gameInfo.status.phase}`);
 
-    // 항상 페이즈가 바뀔 때마다 먼저 선택 상태를 초기화
+    // 즉시 모든 선택 상태 초기화
     setSelectedChampion(null);
     setCurrentPhaseSelectedChampion(null);
     setSelectionSent(false);
@@ -662,8 +697,10 @@ export default function DraftPhase({
     // 선택을 서버로 전송하기 전에 챔피언 정보 저장
     const championToConfirm = selectedChampion;
 
-    // Mark that we've sent the selection
-    setSelectionSent(true);
+    // 확정 전에 즉시 선택 상태 초기화 - 다음 페이즈에 영향 없도록
+    setSelectedChampion(null);
+    setCurrentPhaseSelectedChampion(null);
+    setSelectionSent(true); // 확정 상태로 설정
 
     // 미리 로컬에서 UI 업데이트 (깜빡임 방지)
     const currentPhase = gameInfo.status.phase;
@@ -732,15 +769,13 @@ export default function DraftPhase({
       }
     }
 
-    // 선택 확정 즉시 선택된 챔피언 상태 초기화 (다음 페이즈에 영향을 주지 않도록)
-    setSelectedChampion(null);
-    setCurrentPhaseSelectedChampion(null); // 현재 페이즈 선택 챔피언도 즉시 초기화
-
     // Call the parent component's confirmation handler
     onConfirmSelection();
 
-    // 이제 setSelectionSent(false)를 즉시 호출하여 UI를 즉시 업데이트
-    setSelectionSent(false);
+    // 200ms 후 선택 확정 상태 다시 초기화
+    setTimeout(() => {
+      setSelectionSent(false);
+    }, 200);
   };
 
   const getPhaseDescription = () => {
@@ -792,7 +827,13 @@ export default function DraftPhase({
         banPhase = 14 + secondBanIndex * 2;
       }
     }
+
+    // 현재 페이즈가 정확히 이 슬롯의 밴 페이즈와 일치하는지 확인
     const isCurrentPhase = currentPhase === banPhase;
+
+    // 정확한 페이즈가 아니거나 선택이 확정된 상태면 선택 중인 챔피언 표시하지 않음
+    const shouldShowSelectedChampion =
+      isCurrentPhase && currentPhaseSelectedChampion && !selectionSent;
 
     return (
       <div
@@ -812,20 +853,18 @@ export default function DraftPhase({
             </div>
           </div>
         )}
-        {isCurrentPhase &&
-          currentPhaseSelectedChampion &&
-          selectionSent === false && (
-            <div className="absolute inset-0 flex">
-              <Image
-                src={getChampionImageUrl(currentPhaseSelectedChampion)}
-                alt={currentPhaseSelectedChampion}
-                width={40}
-                height={40}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 champion-highlight"></div>
-            </div>
-          )}
+        {shouldShowSelectedChampion && (
+          <div className="absolute inset-0 flex">
+            <Image
+              src={getChampionImageUrl(currentPhaseSelectedChampion)}
+              alt={currentPhaseSelectedChampion}
+              width={40}
+              height={40}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 champion-highlight"></div>
+          </div>
+        )}
       </div>
     );
   };
@@ -858,7 +897,13 @@ export default function DraftPhase({
         else if (position === 5) pickPhase = 20;
       }
     }
+
+    // 현재 페이즈가 정확히 이 슬롯의 픽 페이즈와 일치하는지 확인
     const isCurrentPhase = currentPhase === pickPhase;
+
+    // 정확한 페이즈가 아니거나 선택이 확정된 상태면 선택 중인 챔피언 표시하지 않음
+    const shouldShowSelectedChampion =
+      isCurrentPhase && currentPhaseSelectedChampion && !selectionSent;
 
     return (
       <div
@@ -873,20 +918,18 @@ export default function DraftPhase({
             className="w-full h-full object-cover"
           />
         )}
-        {isCurrentPhase &&
-          currentPhaseSelectedChampion &&
-          selectionSent === false && (
-            <div className="absolute inset-0 flex">
-              <Image
-                src={getChampionImageUrl(currentPhaseSelectedChampion)}
-                alt={currentPhaseSelectedChampion}
-                width={64}
-                height={64}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 champion-highlight"></div>
-            </div>
-          )}
+        {shouldShowSelectedChampion && (
+          <div className="absolute inset-0 flex">
+            <Image
+              src={getChampionImageUrl(currentPhaseSelectedChampion)}
+              alt={currentPhaseSelectedChampion}
+              width={64}
+              height={64}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 champion-highlight"></div>
+          </div>
+        )}
       </div>
     );
   };
