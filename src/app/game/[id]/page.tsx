@@ -81,24 +81,143 @@ export default function GamePage() {
       fetchGameInfo();
     });
 
-    socketInstance.on("phase_progressed", () => {
-      fetchGameInfo();
+    socketInstance.on("phase_progressed", (data) => {
+      console.log("Phase progressed event:", data);
+      // data: { gameCode, confirmedBy, fromPhase, toPhase, confirmedChampion, timestamp }
+
+      // gameInfo가 있을 때만 업데이트
+      setGameInfo((prevGameInfo) => {
+        if (!prevGameInfo) return prevGameInfo;
+
+        // 새로운 phaseData 배열 생성
+        const newPhaseData = [...prevGameInfo.status.phaseData];
+
+        // 확정된 챔피언 정보 업데이트
+        if (data.confirmedChampion && data.fromPhase < newPhaseData.length) {
+          newPhaseData[data.fromPhase] = data.confirmedChampion;
+        }
+
+        // 업데이트된 게임 정보 반환
+        return {
+          ...prevGameInfo,
+          status: {
+            ...prevGameInfo.status,
+            phase: data.toPhase,
+            phaseData: newPhaseData,
+            lastUpdatedAt: data.timestamp,
+          },
+        };
+      });
+
+      // 새 페이즈로 진행될 때 DraftPhase 컴포넌트에 페이즈 변경 이벤트 발생
+      // 이 이벤트는 DraftPhase 컴포넌트에서 수신하여 선택된 챔피언 상태 초기화에 사용
+      if (socket) {
+        // 소켓 이벤트 발생 대신 커스텀 이벤트 활용
+        const phaseChangeEvent = new CustomEvent("phaseChanged", {
+          detail: { fromPhase: data.fromPhase, toPhase: data.toPhase },
+        });
+        window.dispatchEvent(phaseChangeEvent);
+      }
     });
 
     socketInstance.on("game_result_confirmed", () => {
       fetchGameInfo();
     });
 
-    socketInstance.on("client_joined", () => {
-      fetchGameInfo();
+    socketInstance.on("client_joined", (data) => {
+      console.log("Client joined event:", data);
+
+      // gameInfo가 있을 때만 업데이트
+      setGameInfo((prevGameInfo) => {
+        if (!prevGameInfo) return prevGameInfo;
+
+        // 이미 존재하는 클라이언트인지 확인
+        const existingClientIndex = prevGameInfo.clients.findIndex(
+          (client) => client.nickname === data.nickname
+        );
+
+        let updatedClients;
+
+        if (existingClientIndex >= 0) {
+          // 존재하는 클라이언트면 정보 업데이트
+          updatedClients = [...prevGameInfo.clients];
+          updatedClients[existingClientIndex] = {
+            ...updatedClients[existingClientIndex],
+            position: data.position,
+            isHost: data.isHost,
+          };
+        } else {
+          // 새 클라이언트면 추가
+          updatedClients = [
+            ...prevGameInfo.clients,
+            {
+              nickname: data.nickname,
+              position: data.position,
+              isReady: false, // 초기값 설정
+              isHost: data.isHost,
+              clientId: data.clientId, // clientId가 있는 경우
+            },
+          ];
+        }
+
+        return {
+          ...prevGameInfo,
+          clients: updatedClients,
+        };
+      });
     });
 
-    socketInstance.on("position_changed", () => {
-      fetchGameInfo();
+    socketInstance.on("position_changed", (data) => {
+      console.log("Position changed event:", data);
+      // 현재 사용자의 포지션이 변경된 경우
+      if (data.nickname === nickname) {
+        setPosition(data.newPosition);
+      }
+
+      // gameInfo가 있을 때만 업데이트
+      setGameInfo((prevGameInfo) => {
+        if (!prevGameInfo) return prevGameInfo;
+
+        // clients 배열 업데이트
+        const updatedClients = prevGameInfo.clients.map((client) => {
+          if (client.nickname === data.nickname) {
+            return { ...client, position: data.newPosition };
+          }
+          return client;
+        });
+
+        // 업데이트된 게임 정보 반환
+        return {
+          ...prevGameInfo,
+          clients: updatedClients,
+        };
+      });
     });
 
-    socketInstance.on("ready_state_changed", () => {
-      fetchGameInfo();
+    socketInstance.on("ready_state_changed", (data) => {
+      console.log("Ready state changed event:", data);
+
+      // gameInfo가 있을 때만 업데이트
+      setGameInfo((prevGameInfo) => {
+        if (!prevGameInfo) return prevGameInfo;
+
+        // clients 배열 업데이트
+        const updatedClients = prevGameInfo.clients.map((client) => {
+          if (
+            client.nickname === data.nickname &&
+            client.position === data.position
+          ) {
+            return { ...client, isReady: data.isReady };
+          }
+          return client;
+        });
+
+        // 업데이트된 게임 정보 반환
+        return {
+          ...prevGameInfo,
+          clients: updatedClients,
+        };
+      });
     });
 
     socketInstance.on("client_left", (data) => {
@@ -106,7 +225,26 @@ export default function GamePage() {
         `${data.nickname} left the game (position: ${data.position})`
       );
       setLastLeftPlayer(data);
-      fetchGameInfo();
+
+      // 클라이언트 이탈 시 gameInfo 업데이트
+      setGameInfo((prevGameInfo) => {
+        if (!prevGameInfo) return prevGameInfo;
+
+        // clients 배열에서 해당 클라이언트 제거
+        const updatedClients = prevGameInfo.clients.filter(
+          (client) =>
+            !(
+              client.nickname === data.nickname &&
+              client.position === data.position
+            )
+        );
+
+        // 업데이트된 게임 정보 반환
+        return {
+          ...prevGameInfo,
+          clients: updatedClients,
+        };
+      });
 
       setTimeout(() => setLastLeftPlayer(null), 5000);
     });
@@ -218,6 +356,12 @@ export default function GamePage() {
   const handlePositionChange = (newPosition: string) => {
     if (!socket) return;
 
+    // 기존 포지션 저장
+    const oldPosition = position;
+
+    // 즉시 UI 업데이트를 위해 로컬 상태 변경
+    setPosition(newPosition);
+
     // Set loading to prevent multiple clicks
     setIsLoading(true);
 
@@ -226,12 +370,34 @@ export default function GamePage() {
       { position: newPosition },
       (response: any) => {
         if (response.status === "success") {
-          setPosition(newPosition);
           console.log(`Position changed to ${newPosition}`);
 
-          // Immediately fetch game info after position change
-          fetchGameInfo();
+          // 내 로컬 상태 및 gameInfo의 clients 배열 업데이트
+          if (gameInfo) {
+            setGameInfo((prevGameInfo) => {
+              if (!prevGameInfo) return prevGameInfo;
+
+              // clients 배열에서 내 정보 업데이트
+              const updatedClients = prevGameInfo.clients.map((client) => {
+                // clientId가 있으면 그걸로 비교, 없으면 닉네임으로 비교
+                const isCurrentUser =
+                  (clientId && client.clientId === clientId) ||
+                  (!clientId && client.nickname === nickname);
+                if (isCurrentUser) {
+                  return { ...client, position: newPosition };
+                }
+                return client;
+              });
+
+              return {
+                ...prevGameInfo,
+                clients: updatedClients,
+              };
+            });
+          }
         } else {
+          // 실패 시 이전 포지션으로 되돌림
+          setPosition(oldPosition);
           setError(response.message || "포지션 변경에 실패했습니다.");
         }
         setIsLoading(false);
@@ -246,9 +412,36 @@ export default function GamePage() {
     // Set loading to prevent multiple clicks
     setIsLoading(true);
 
+    // 로컬 UI 즉시 업데이트
+    setGameInfo((prevGameInfo) => {
+      if (!prevGameInfo) return prevGameInfo;
+
+      // clients 배열에서 내 정보 업데이트
+      const updatedClients = prevGameInfo.clients.map((client) => {
+        // clientId가 있으면 그걸로 비교, 없으면 닉네임으로 비교
+        const isCurrentUser =
+          (clientId && client.clientId === clientId) ||
+          (!clientId && client.nickname === nickname);
+
+        // 내 위치가 같은 경우만 업데이트 (위치가 바뀌었을 수 있음)
+        if (isCurrentUser && client.position === position) {
+          return { ...client, isReady };
+        }
+        return client;
+      });
+
+      return {
+        ...prevGameInfo,
+        clients: updatedClients,
+      };
+    });
+
     socket.emit("change_ready_state", { isReady }, (response: any) => {
       if (response.status !== "success") {
         setError(response.message || "준비 상태 변경에 실패했습니다.");
+
+        // 실패 시 이전 상태로 되돌리기 위해 gameInfo 다시 가져오기
+        fetchGameInfo();
       }
       setIsLoading(false);
     });
@@ -287,14 +480,25 @@ export default function GamePage() {
 
   // Handle selection confirmation
   const handleConfirmSelection = () => {
-    if (!socket) return;
+    if (!socket || !gameInfo) return;
 
     console.log("Sending selection confirmation"); // Debug log
 
+    // 현재 phase 정보 저장
+    const currentPhase = gameInfo.status.phase;
+
+    // 페이즈가 변경되기 전에 선택 상태가 초기화되도록 미리 커스텀 이벤트 발생시킴
+    // 이 이벤트는 DraftPhase 컴포넌트에서 수신하여 선택된 챔피언 상태 초기화에 사용
+    const phaseChangeEvent = new CustomEvent("resetSelections", {});
+    window.dispatchEvent(phaseChangeEvent);
+
+    // 서버에 확정 요청
     socket.emit("confirm_selection", {}, (response: any) => {
       console.log("Confirmation response:", response); // Debug log
       if (response.status !== "success") {
         setError(response.message || "선택 확정에 실패했습니다.");
+        // 실패 시 원래 상태로 복원하기 위해 게임 정보 다시 가져오기
+        fetchGameInfo();
       } else {
         console.log("Selection confirmed successfully");
       }

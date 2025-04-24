@@ -195,6 +195,54 @@ export default function DraftPhase({
     fetchChampions();
   }, []); // 빈 의존성 배열로 컴포넌트 마운트 시 한 번만 실행
 
+  // 페이즈 변경 이벤트 수신 및 처리하는 이펙트 추가
+  useEffect(() => {
+    // 페이즈 변경 이벤트 리스너
+    const handlePhaseChanged = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        fromPhase: number;
+        toPhase: number;
+      }>;
+      console.log("Phase changed event received:", customEvent.detail);
+
+      // 페이즈가 변경될 때 즉시 선택된 챔피언 상태 초기화
+      setSelectedChampion(null);
+      setCurrentPhaseSelectedChampion(null);
+      setSelectionSent(false);
+    };
+
+    // 이벤트 리스너 등록
+    window.addEventListener("phaseChanged", handlePhaseChanged);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener("phaseChanged", handlePhaseChanged);
+    };
+  }, []);
+
+  // 선택 초기화 이벤트 수신 및 처리하는 이펙트 추가
+  useEffect(() => {
+    // 선택 초기화 이벤트 리스너
+    const handleResetSelections = () => {
+      console.log(
+        "Reset selections event received, clearing selections immediately"
+      );
+
+      // 모든 선택 상태 즉시 초기화 (서버에 요청하기 전)
+      setSelectedChampion(null);
+      setCurrentPhaseSelectedChampion(null);
+      setSelectionSent(false);
+    };
+
+    // 이벤트 리스너 등록
+    window.addEventListener("resetSelections", handleResetSelections);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener("resetSelections", handleResetSelections);
+    };
+  }, []);
+
   // Update available champions whenever bans or picks change
   useEffect(() => {
     if (champions.length === 0) return;
@@ -214,6 +262,14 @@ export default function DraftPhase({
 
   // Set the current turn position based on the phase
   useEffect(() => {
+    // 이전 페이즈 기록 - 디버깅 목적
+    console.log(`Phase changed: ${gameInfo.status.phase}`);
+
+    // 항상 페이즈가 바뀔 때마다 먼저 선택 상태를 초기화
+    setSelectedChampion(null);
+    setCurrentPhaseSelectedChampion(null);
+    setSelectionSent(false);
+
     // This is a simplified mapping of phase to position
     // In a real app, this would be more comprehensive and come from the server
     const phase = gameInfo.status.phase;
@@ -340,15 +396,98 @@ export default function DraftPhase({
     }) => {
       console.log("champion_selected 이벤트 수신:", data);
 
+      // 현재 페이즈가 아닌 선택은 무시
+      if (data.phase !== gameInfo.status.phase) {
+        console.log(
+          `다른 페이즈(${data.phase})의 선택은 무시합니다. 현재 페이즈: ${gameInfo.status.phase}`
+        );
+        return;
+      }
+
       // 현재 페이즈의 선택된 챔피언을 업데이트
-      if (data.phase === gameInfo.status.phase) {
-        setCurrentPhaseSelectedChampion(data.champion);
-        if (data.nickname === nickname) {
-          setSelectedChampion(data.champion);
+      setCurrentPhaseSelectedChampion(data.champion);
+
+      // 내가 선택한 챔피언인 경우
+      if (data.nickname === nickname) {
+        setSelectedChampion(data.champion);
+      }
+
+      // 확정된 경우 (다른 플레이어의 선택이 확정되었을 때)
+      if (data.isConfirmed) {
+        // 선택된 챔피언을 현재 페이즈의 데이터에 미리 추가
+        // 서버에서 phase_progressed 이벤트가 도착하기 전에 UI에 반영
+        const currentPhase = gameInfo.status.phase;
+        const selectedChampion = data.champion;
+
+        // 선택한 챔피언이 BAN인지 PICK인지 판단
+        if (currentPhase <= 6 || (currentPhase >= 13 && currentPhase <= 16)) {
+          // BAN 페이즈인 경우
+          if (
+            currentPhase % 2 === 1 ||
+            (currentPhase >= 13 && currentPhase % 2 === 1)
+          ) {
+            // 블루팀 BAN
+            const blueIndex =
+              currentPhase <= 6
+                ? Math.floor((currentPhase - 1) / 2)
+                : 3 + Math.floor((currentPhase - 14) / 2);
+            const newBlueBans = [...blueBans];
+            newBlueBans[blueIndex] = selectedChampion;
+            setBlueBans(newBlueBans);
+
+            // 전체 밴 리스트도 업데이트
+            setBannedChampions([...redBans, ...newBlueBans]);
+          } else {
+            // 레드팀 BAN
+            const redIndex =
+              currentPhase <= 6
+                ? Math.floor((currentPhase - 2) / 2)
+                : 3 + Math.floor((currentPhase - 13) / 2);
+            const newRedBans = [...redBans];
+            newRedBans[redIndex] = selectedChampion;
+            setRedBans(newRedBans);
+
+            // 전체 밴 리스트도 업데이트
+            setBannedChampions([...newRedBans, ...blueBans]);
+          }
+        } else {
+          // PICK 페이즈인 경우
+          let teamPosition = "";
+
+          // 픽 페이즈에 따라 포지션 결정
+          if (currentPhase === 7) teamPosition = "blue1";
+          else if (currentPhase === 8) teamPosition = "red1";
+          else if (currentPhase === 9) teamPosition = "red2";
+          else if (currentPhase === 10) teamPosition = "blue2";
+          else if (currentPhase === 11) teamPosition = "blue3";
+          else if (currentPhase === 12) teamPosition = "red3";
+          else if (currentPhase === 17) teamPosition = "red4";
+          else if (currentPhase === 18) teamPosition = "blue4";
+          else if (currentPhase === 19) teamPosition = "blue5";
+          else if (currentPhase === 20) teamPosition = "red5";
+
+          if (teamPosition.startsWith("blue")) {
+            const newBluePicks = { ...bluePicks };
+            newBluePicks[teamPosition] = selectedChampion;
+            setBluePicks(newBluePicks);
+
+            // 전체 픽 리스트도 업데이트
+            setPickedChampions({ ...redPicks, ...newBluePicks });
+          } else if (teamPosition.startsWith("red")) {
+            const newRedPicks = { ...redPicks };
+            newRedPicks[teamPosition] = selectedChampion;
+            setRedPicks(newRedPicks);
+
+            // 전체 픽 리스트도 업데이트
+            setPickedChampions({ ...bluePicks, ...newRedPicks });
+          }
         }
-        if (data.isConfirmed) {
-          onConfirmSelection();
-          setCurrentPhaseSelectedChampion(null);
+
+        // UI 깜빡임 방지를 위해 선택 챔피언 초기화를 지연시키지 않고 즉시 초기화
+        setCurrentPhaseSelectedChampion(null);
+        if (data.nickname === nickname) {
+          setSelectedChampion(null);
+          setSelectionSent(false);
         }
       }
     };
@@ -358,7 +497,15 @@ export default function DraftPhase({
     return () => {
       socket.off("champion_selected", handleChampionSelected);
     };
-  }, [socket, nickname, gameInfo.status.phase, onConfirmSelection]);
+  }, [
+    socket,
+    nickname,
+    gameInfo.status.phase,
+    blueBans,
+    redBans,
+    bluePicks,
+    redPicks,
+  ]);
 
   // Determine if it's the current player's turn based on game mode, phase, and position
   const isPlayerTurn = () => {
@@ -512,16 +659,88 @@ export default function DraftPhase({
 
     console.log(`Confirming selection: ${selectedChampion}`);
 
+    // 선택을 서버로 전송하기 전에 챔피언 정보 저장
+    const championToConfirm = selectedChampion;
+
     // Mark that we've sent the selection
     setSelectionSent(true);
+
+    // 미리 로컬에서 UI 업데이트 (깜빡임 방지)
+    const currentPhase = gameInfo.status.phase;
+
+    // 확정할 챔피언의 페이즈 정보 저장
+    if (currentPhase <= 6 || (currentPhase >= 13 && currentPhase <= 16)) {
+      // BAN 페이즈인 경우
+      if (
+        currentPhase % 2 === 1 ||
+        (currentPhase >= 13 && currentPhase % 2 === 1)
+      ) {
+        // 블루팀 BAN
+        const blueIndex =
+          currentPhase <= 6
+            ? Math.floor((currentPhase - 1) / 2)
+            : 3 + Math.floor((currentPhase - 14) / 2);
+        const newBlueBans = [...blueBans];
+        newBlueBans[blueIndex] = championToConfirm;
+        setBlueBans(newBlueBans);
+
+        // 전체 밴 리스트도 업데이트
+        setBannedChampions([...redBans, ...newBlueBans]);
+      } else {
+        // 레드팀 BAN
+        const redIndex =
+          currentPhase <= 6
+            ? Math.floor((currentPhase - 2) / 2)
+            : 3 + Math.floor((currentPhase - 13) / 2);
+        const newRedBans = [...redBans];
+        newRedBans[redIndex] = championToConfirm;
+        setRedBans(newRedBans);
+
+        // 전체 밴 리스트도 업데이트
+        setBannedChampions([...newRedBans, ...blueBans]);
+      }
+    } else {
+      // PICK 페이즈인 경우
+      let teamPosition = "";
+
+      // 픽 페이즈에 따라 포지션 결정
+      if (currentPhase === 7) teamPosition = "blue1";
+      else if (currentPhase === 8) teamPosition = "red1";
+      else if (currentPhase === 9) teamPosition = "red2";
+      else if (currentPhase === 10) teamPosition = "blue2";
+      else if (currentPhase === 11) teamPosition = "blue3";
+      else if (currentPhase === 12) teamPosition = "red3";
+      else if (currentPhase === 17) teamPosition = "red4";
+      else if (currentPhase === 18) teamPosition = "blue4";
+      else if (currentPhase === 19) teamPosition = "blue5";
+      else if (currentPhase === 20) teamPosition = "red5";
+
+      if (teamPosition.startsWith("blue")) {
+        const newBluePicks = { ...bluePicks };
+        newBluePicks[teamPosition] = championToConfirm;
+        setBluePicks(newBluePicks);
+
+        // 전체 픽 리스트도 업데이트
+        setPickedChampions({ ...redPicks, ...newBluePicks });
+      } else if (teamPosition.startsWith("red")) {
+        const newRedPicks = { ...redPicks };
+        newRedPicks[teamPosition] = championToConfirm;
+        setRedPicks(newRedPicks);
+
+        // 전체 픽 리스트도 업데이트
+        setPickedChampions({ ...bluePicks, ...newRedPicks });
+      }
+    }
+
+    // 선택 확정 즉시 선택된 챔피언 상태 초기화 (다음 페이즈에 영향을 주지 않도록)
+    setSelectedChampion(null);
+    setCurrentPhaseSelectedChampion(null); // 현재 페이즈 선택 챔피언도 즉시 초기화
 
     // Call the parent component's confirmation handler
     onConfirmSelection();
 
-    // Reset selection after confirmation (with a slight delay to prevent UI flicker)
-    setTimeout(() => {
-      setSelectedChampion(null);
-    }, 200);
+    // 이제 setSelectionSent(false)를 즉시 호출하여 UI를 즉시 업데이트
+    setSelectionSent(false);
   };
 
   const getPhaseDescription = () => {
@@ -593,18 +812,20 @@ export default function DraftPhase({
             </div>
           </div>
         )}
-        {isCurrentPhase && currentPhaseSelectedChampion && (
-          <div className="absolute inset-0 flex">
-            <Image
-              src={getChampionImageUrl(currentPhaseSelectedChampion)}
-              alt={currentPhaseSelectedChampion}
-              width={40}
-              height={40}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 champion-highlight"></div>
-          </div>
-        )}
+        {isCurrentPhase &&
+          currentPhaseSelectedChampion &&
+          selectionSent === false && (
+            <div className="absolute inset-0 flex">
+              <Image
+                src={getChampionImageUrl(currentPhaseSelectedChampion)}
+                alt={currentPhaseSelectedChampion}
+                width={40}
+                height={40}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 champion-highlight"></div>
+            </div>
+          )}
       </div>
     );
   };
@@ -652,18 +873,20 @@ export default function DraftPhase({
             className="w-full h-full object-cover"
           />
         )}
-        {isCurrentPhase && currentPhaseSelectedChampion && (
-          <div className="absolute inset-0 flex">
-            <Image
-              src={getChampionImageUrl(currentPhaseSelectedChampion)}
-              alt={currentPhaseSelectedChampion}
-              width={64}
-              height={64}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 champion-highlight"></div>
-          </div>
-        )}
+        {isCurrentPhase &&
+          currentPhaseSelectedChampion &&
+          selectionSent === false && (
+            <div className="absolute inset-0 flex">
+              <Image
+                src={getChampionImageUrl(currentPhaseSelectedChampion)}
+                alt={currentPhaseSelectedChampion}
+                width={64}
+                height={64}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 champion-highlight"></div>
+            </div>
+          )}
       </div>
     );
   };
