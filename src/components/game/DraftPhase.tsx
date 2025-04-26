@@ -591,52 +591,6 @@ export default function DraftPhase({
       }
     }
 
-    // In 5v5 mode
-    if (playerType === "5v5") {
-      // Ban phases - only player 1 from each team can ban
-      if ((phase >= 1 && phase <= 6) || (phase >= 13 && phase <= 16)) {
-        // Only player number 1 from each team can ban
-        if (playerNumber !== 1) return false;
-
-        // First ban phase (1-6): Blue→Red→Blue→Red→Blue→Red
-        if (phase >= 1 && phase <= 6) {
-          return (
-            (phase % 2 === 1 && playerTeam === "blue") ||
-            (phase % 2 === 0 && playerTeam === "red")
-          );
-        }
-
-        // Second ban phase (13-16): Red→Blue→Red→Blue
-        if (phase >= 13 && phase <= 16) {
-          return (
-            (phase % 2 === 1 && playerTeam === "red") ||
-            (phase % 2 === 0 && playerTeam === "blue")
-          );
-        }
-      }
-
-      // Pick phases - each player has their own position
-      if ((phase >= 7 && phase <= 12) || (phase >= 17 && phase <= 20)) {
-        // Map phase to the player number that should pick
-        let playerTurn;
-
-        // First pick phase (7-12): blue1→red1→red2→blue2→blue3→red3
-        if (phase === 7) playerTurn = "blue1";
-        else if (phase === 8) playerTurn = "red1";
-        else if (phase === 9) playerTurn = "red2";
-        else if (phase === 10) playerTurn = "blue2";
-        else if (phase === 11) playerTurn = "blue3";
-        else if (phase === 12) playerTurn = "red3";
-        // Second pick phase (17-20): red4→blue4→blue5→red5
-        else if (phase === 17) playerTurn = "red4";
-        else if (phase === 18) playerTurn = "blue4";
-        else if (phase === 19) playerTurn = "blue5";
-        else if (phase === 20) playerTurn = "red5";
-
-        return position === playerTurn;
-      }
-    }
-
     return false;
   };
 

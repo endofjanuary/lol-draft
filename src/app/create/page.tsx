@@ -399,17 +399,6 @@ export default function CreateGame() {
               >
                 1v1
               </button>
-              <button
-                type="button"
-                onClick={() => handlePlayerModeSelection("5v5")}
-                className={`px-4 py-2 rounded-md border ${
-                  formData.playerMode === "5v5"
-                    ? "bg-blue-600 border-blue-400"
-                    : "bg-gray-800 border-gray-600 hover:bg-gray-700"
-                }`}
-              >
-                5v5
-              </button>
             </div>
           </div>
 
