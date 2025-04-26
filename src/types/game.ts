@@ -24,7 +24,7 @@ export interface GameInfo {
   settings: {
     version: string;
     draftType: string; // "tournament", "hardFearless", "softFearless"
-    playerType: string; // "single", "1v1", "5v5"
+    playerType: string; // "single", "1v1"
     matchFormat: string; // "bo1", "bo3", "bo5"
     timeLimit: boolean;
     globalBans?: string[];

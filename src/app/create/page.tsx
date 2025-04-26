@@ -400,6 +400,11 @@ export default function CreateGame() {
                 1v1
               </button>
             </div>
+            {formData.playerMode === "1v1" && (
+              <p className="text-xs text-gray-400 mt-1">
+                각 플레이어는 팀의 대표로서 모든 챔피언 선택을 담당합니다.
+              </p>
+            )}
           </div>
 
           {/* Draft Mode */}

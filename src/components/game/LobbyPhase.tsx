@@ -77,8 +77,7 @@ export default function LobbyPhase({
 
   // 모든 팀 슬롯이 채워져 있는지 확인
   const areAllTeamSlotsFilled = () => {
-    const is5v5 = gameInfo.settings.playerType === "5v5";
-    const positionsPerTeam = is5v5 ? 5 : 1;
+    const positionsPerTeam = 1; // 항상 1로 설정 (5v5 모드 제거)
     const requiredPositions = [];
 
     // 필요한 모든 포지션 목록 생성
@@ -128,8 +127,7 @@ export default function LobbyPhase({
   // Generate team slots based on game type
   const renderTeamSlots = () => {
     const slots = [];
-    const is5v5 = gameInfo.settings.playerType === "5v5";
-    const positionsPerTeam = is5v5 ? 5 : 1;
+    const positionsPerTeam = 1; // 항상 1로 설정 (5v5 모드 제거)
 
     // Blue team slots
     for (let i = 1; i <= positionsPerTeam; i++) {
@@ -158,7 +156,7 @@ export default function LobbyPhase({
         >
           <div className="flex justify-between items-center">
             <span className="font-medium">
-              {is5v5 ? `블루 ${i}` : "블루"}
+              블루팀 대표
               {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
             </span>
             {(player?.isReady || (isCurrentPlayer && isReady)) && (
@@ -221,7 +219,7 @@ export default function LobbyPhase({
         >
           <div className="flex justify-between items-center">
             <span className="font-medium">
-              {is5v5 ? `레드 ${i}` : "레드"}
+              레드팀 대표
               {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
             </span>
             {(player?.isReady || (isCurrentPlayer && isReady)) && (
@@ -322,12 +320,7 @@ export default function LobbyPhase({
           <h2 className="text-xl font-bold text-blue-400 mb-4">
             블루팀 <span className="text-white">{gameInfo.blueScore || 0}</span>
           </h2>
-          <div>
-            {renderTeamSlots().slice(
-              0,
-              gameInfo.settings.playerType === "5v5" ? 5 : 1
-            )}
-          </div>
+          <div>{renderTeamSlots().slice(0, 1)}</div>
         </div>
 
         {/* Red Team Column */}
@@ -335,11 +328,7 @@ export default function LobbyPhase({
           <h2 className="text-xl font-bold text-red-400 mb-4">
             레드팀 <span className="text-white">{gameInfo.redScore || 0}</span>
           </h2>
-          <div>
-            {renderTeamSlots().slice(
-              gameInfo.settings.playerType === "5v5" ? 5 : 1
-            )}
-          </div>
+          <div>{renderTeamSlots().slice(1)}</div>
         </div>
       </div>
 
