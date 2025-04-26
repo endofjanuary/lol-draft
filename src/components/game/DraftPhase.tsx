@@ -1003,12 +1003,16 @@ export default function DraftPhase({
           <h2 className="text-2xl font-bold">{getPhaseDescription()}</h2>
           <p className="text-lg">
             {playersTurn
-              ? `Your turn to ${getCurrentAction()}`
-              : `Waiting for ${
-                  currentTurnPosition.startsWith("blue") ? "Blue" : "Red"
-                } Team to ${getCurrentAction()}`}
+              ? `${position.startsWith("blue") ? "블루팀" : "레드팀"} 차례: ${
+                  getCurrentAction() === "BAN" ? "밴" : "픽"
+                } 선택`
+              : `${
+                  currentTurnPosition.startsWith("blue") ? "블루팀" : "레드팀"
+                } 차례: ${
+                  getCurrentAction() === "BAN" ? "밴" : "픽"
+                } 선택 대기 중`}
           </p>
-          <p className="text-sm mt-1">Phase: {gameInfo.status.phase}/20</p>
+          <p className="text-sm mt-1">진행 단계: {gameInfo.status.phase}/20</p>
 
           {/* Render timer in its own div to isolate re-renders */}
           {playersTurn && gameInfo.settings.timeLimit && (
@@ -1025,17 +1029,28 @@ export default function DraftPhase({
 
         <div className="flex flex-col md:flex-row gap-4">
           {/* Blue Team */}
-          <div className="w-full md:w-1/4 bg-blue-900 bg-opacity-20 rounded-lg p-4">
+          <div
+            className={`w-full md:w-1/4 bg-blue-900 ${
+              currentTurnPosition.startsWith("blue")
+                ? "bg-opacity-40 ring-2 ring-blue-400"
+                : "bg-opacity-20"
+            } rounded-lg p-4 relative transition-all duration-300`}
+          >
+            {currentTurnPosition.startsWith("blue") && (
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                {getCurrentAction() === "BAN" ? "밴 선택 중" : "픽 선택 중"}
+              </div>
+            )}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-blue-400">
-                {gameInfo.status.blueTeamName || "Blue Team"}
+                {gameInfo.status.blueTeamName || "블루팀"}
               </h3>
               <span className="text-xl">{gameInfo.blueScore || 0}</span>
             </div>
 
             {/* Blue Bans */}
             <div className="mb-6">
-              <h4 className="text-sm text-gray-400 mb-2">BANS</h4>
+              <h4 className="text-sm text-gray-400 mb-2">금지 챔피언</h4>
               <div className="flex flex-wrap gap-1">
                 {[0, 1, 2, 3, 4].map((index) => (
                   <div
@@ -1050,7 +1065,7 @@ export default function DraftPhase({
 
             {/* Blue Picks */}
             <div>
-              <h4 className="text-sm text-gray-400 mb-2">PICKS</h4>
+              <h4 className="text-sm text-gray-400 mb-2">선택 챔피언</h4>
               <div className="flex flex-col gap-2">
                 {[1, 2, 3, 4, 5].map((position) => {
                   const key = `blue${position}`;
@@ -1060,26 +1075,29 @@ export default function DraftPhase({
                       championId
                     : "";
 
+                  const isCurrentTurn = currentTurnPosition === key;
+
                   return (
-                    <div key={key} className="flex items-center gap-2">
+                    <div
+                      key={key}
+                      className={`flex items-center gap-2 ${
+                        isCurrentTurn
+                          ? "bg-blue-800 bg-opacity-50 p-1 rounded-md"
+                          : ""
+                      }`}
+                    >
                       <div
                         className={`
                       w-1 h-6 
-                      ${
-                        currentTurnPosition === key
-                          ? "bg-yellow-400"
-                          : "bg-gray-600"
-                      }
+                      ${isCurrentTurn ? "bg-yellow-400" : "bg-gray-600"}
                     `}
                       ></div>
                       {renderTeamSlot("blue", position)}
                       <div className="flex flex-col">
-                        <span className="text-sm">{`BLUE ${position}`}</span>
-                        {championName && (
-                          <span className="text-xs text-blue-300">
-                            {championName}
-                          </span>
-                        )}
+                        <span className="text-sm">
+                          {isCurrentTurn ? "➤ " : ""}
+                          {championName || "대기 중"}
+                        </span>
                       </div>
                     </div>
                   );
@@ -1117,7 +1135,7 @@ export default function DraftPhase({
               </div>
             ) : (
               <>
-                <h3 className="text-lg font-bold mb-4">Select Champion</h3>
+                <h3 className="text-lg font-bold mb-4">챔피언 선택</h3>
 
                 {/* Search and filter controls */}
                 <div className="mb-4 flex flex-col sm:flex-row gap-2">
@@ -1217,7 +1235,7 @@ export default function DraftPhase({
                         }
                       `}
                     >
-                      {getCurrentAction()} 확정하기
+                      {getCurrentAction() === "BAN" ? "밴" : "픽"} 확정하기
                     </button>
                   </div>
                 )}
@@ -1226,17 +1244,28 @@ export default function DraftPhase({
           </div>
 
           {/* Red Team */}
-          <div className="w-full md:w-1/4 bg-red-900 bg-opacity-20 rounded-lg p-4">
+          <div
+            className={`w-full md:w-1/4 bg-red-900 ${
+              currentTurnPosition.startsWith("red")
+                ? "bg-opacity-40 ring-2 ring-red-400"
+                : "bg-opacity-20"
+            } rounded-lg p-4 relative transition-all duration-300`}
+          >
+            {currentTurnPosition.startsWith("red") && (
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                {getCurrentAction() === "BAN" ? "밴 선택 중" : "픽 선택 중"}
+              </div>
+            )}
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-red-400">
-                {gameInfo.status.redTeamName || "Red Team"}
+                {gameInfo.status.redTeamName || "레드팀"}
               </h3>
               <span className="text-xl">{gameInfo.redScore || 0}</span>
             </div>
 
             {/* Red Bans */}
             <div className="mb-6">
-              <h4 className="text-sm text-gray-400 mb-2">BANS</h4>
+              <h4 className="text-sm text-gray-400 mb-2">금지 챔피언</h4>
               <div className="flex flex-wrap gap-1">
                 {[0, 1, 2, 3, 4].map((index) => (
                   <div
@@ -1251,7 +1280,7 @@ export default function DraftPhase({
 
             {/* Red Picks */}
             <div>
-              <h4 className="text-sm text-gray-400 mb-2">PICKS</h4>
+              <h4 className="text-sm text-gray-400 mb-2">선택 챔피언</h4>
               <div className="flex flex-col gap-2">
                 {[1, 2, 3, 4, 5].map((position) => {
                   const key = `red${position}`;
@@ -1261,26 +1290,29 @@ export default function DraftPhase({
                       championId
                     : "";
 
+                  const isCurrentTurn = currentTurnPosition === key;
+
                   return (
-                    <div key={key} className="flex items-center gap-2">
+                    <div
+                      key={key}
+                      className={`flex items-center gap-2 ${
+                        isCurrentTurn
+                          ? "bg-red-800 bg-opacity-50 p-1 rounded-md"
+                          : ""
+                      }`}
+                    >
                       <div
                         className={`
                       w-1 h-6 
-                      ${
-                        currentTurnPosition === key
-                          ? "bg-yellow-400"
-                          : "bg-gray-600"
-                      }
+                      ${isCurrentTurn ? "bg-yellow-400" : "bg-gray-600"}
                     `}
                       ></div>
                       {renderTeamSlot("red", position)}
                       <div className="flex flex-col">
-                        <span className="text-sm">{`RED ${position}`}</span>
-                        {championName && (
-                          <span className="text-xs text-red-300">
-                            {championName}
-                          </span>
-                        )}
+                        <span className="text-sm">
+                          {isCurrentTurn ? "➤ " : ""}
+                          {championName || "대기 중"}
+                        </span>
                       </div>
                     </div>
                   );
