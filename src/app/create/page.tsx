@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { getApiBaseUrl } from "@/utils/apiConfig";
 
 interface Champion {
   id: string;
@@ -22,7 +23,7 @@ export default function CreateGame() {
     draftMode: "tournament",
     playerMode: "1v1",
     tournamentSet: "bo1",
-    timerSetting: "unlimited",
+    timerSetting: "limited",
     globalBans: [] as string[],
     bannerImage: null as string | null,
   });
@@ -217,27 +218,37 @@ export default function CreateGame() {
 
       console.log("Creating game with options:", requestBody);
 
-      const response = await fetch("http://localhost:8000/games", {
+      const apiBaseUrl = getApiBaseUrl();
+      console.log("API URL:", apiBaseUrl);
+
+      const response = await fetch(`${apiBaseUrl}/games`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "게임 생성에 실패했습니다.");
+        // 상세한 에러 메시지를 추출하려고 시도합니다
+        let errorDetail;
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.detail || `서버 오류 (${response.status})`;
+        } catch (e) {
+          errorDetail = `서버 오류 (${response.status})`;
+        }
+
+        throw new Error(`게임 생성 실패: ${errorDetail}`);
       }
 
       const gameData = await response.json();
-      console.log("Game created successfully:", gameData);
-
+      console.log("게임 생성 성공:", gameData);
       router.push(`/game/${gameData.gameCode}`);
     } catch (error) {
-      console.error("Failed to create game:", error);
+      console.error("게임 생성 중 오류 발생:", error);
       setApiError(
         error instanceof Error
           ? error.message
-          : "게임 생성 중 오류가 발생했습니다."
+          : "알 수 없는 오류가 발생했습니다."
       );
     } finally {
       setIsSubmitting(false);
@@ -299,14 +310,22 @@ export default function CreateGame() {
                 name="patchVersion"
                 value={formData.patchVersion}
                 onChange={handleInputChange}
-                className="w-full p-2 rounded-md bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 rounded-md bg-gray-800 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none pr-8 bg-no-repeat bg-[length:16px_16px] bg-[right_12px_center] bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Ctitle%3Edown-arrow%3C%2Ftitle%3E%3Cg%20fill%3D%22%23ffffff%22%3E%3Cpath%20d%3D%22M10.293%2C3.293%2C6%2C7.586%2C1.707%2C3.293A1%2C1%2C0%2C0%2C0%2C.293%2C4.707l5%2C5a1%2C1%2C0%2C0%2C0%2C1.414%2C0l5-5a1%2C1%2C0%2C1%2C0-1.414-1.414Z%22%20fill%3D%22%23ffffff%22%3E%3C%2Fpath%3E%3C%2Fg%3E%3C%2Fsvg%3E')]"
               >
                 {versions.length > 0 ? (
-                  versions.map((version) => (
-                    <option key={version} value={version}>
-                      {version}
-                    </option>
-                  ))
+                  versions.map((version) => {
+                    const [major, minor] = version.split(".");
+                    const displayMajor = (parseInt(major) + 10)
+                      .toString()
+                      .padStart(2, "0");
+                    const displayMinor = minor.padStart(2, "0");
+                    const displayVersion = `${displayMajor}.${displayMinor}`;
+                    return (
+                      <option key={version} value={version}>
+                        {displayVersion}
+                      </option>
+                    );
+                  })
                 ) : (
                   <option value="">로딩 중...</option>
                 )}
@@ -380,17 +399,6 @@ export default function CreateGame() {
               >
                 1v1
               </button>
-              <button
-                type="button"
-                onClick={() => handlePlayerModeSelection("5v5")}
-                className={`px-4 py-2 rounded-md border ${
-                  formData.playerMode === "5v5"
-                    ? "bg-blue-600 border-blue-400"
-                    : "bg-gray-800 border-gray-600 hover:bg-gray-700"
-                }`}
-              >
-                5v5
-              </button>
             </div>
           </div>
 
@@ -407,18 +415,27 @@ export default function CreateGame() {
                     : "bg-gray-800 border-gray-600 hover:bg-gray-700"
                 }`}
               >
-                일반 대회 모드
+                토너먼트 드래프트
               </button>
               <button
                 type="button"
                 onClick={() => handleModeSelection("hardFearless")}
-                className={`px-4 py-2 rounded-md border ${
+                className={`px-4 py-2 rounded-md border flex items-center gap-2 ${
                   formData.draftMode === "hardFearless"
                     ? "bg-blue-600 border-blue-400"
                     : "bg-gray-800 border-gray-600 hover:bg-gray-700"
                 }`}
               >
                 하드 피어리스
+                <div className="bg-white rounded-full p-1">
+                  <Image
+                    src="/images/lck_logo.svg"
+                    alt="LCK Logo"
+                    width={20}
+                    height={20}
+                    className="w-5 h-5"
+                  />
+                </div>
               </button>
               <button
                 type="button"
@@ -442,14 +459,14 @@ export default function CreateGame() {
             <div className="flex flex-wrap gap-4">
               <button
                 type="button"
-                onClick={() => handleSetSelection("bo5")}
+                onClick={() => handleSetSelection("bo1")}
                 className={`px-4 py-2 rounded-md border ${
-                  formData.tournamentSet === "bo5"
+                  formData.tournamentSet === "bo1"
                     ? "bg-blue-600 border-blue-400"
                     : "bg-gray-800 border-gray-600 hover:bg-gray-700"
                 }`}
               >
-                5판 3선승
+                단판제
               </button>
               <button
                 type="button"
@@ -464,14 +481,14 @@ export default function CreateGame() {
               </button>
               <button
                 type="button"
-                onClick={() => handleSetSelection("bo1")}
+                onClick={() => handleSetSelection("bo5")}
                 className={`px-4 py-2 rounded-md border ${
-                  formData.tournamentSet === "bo1"
+                  formData.tournamentSet === "bo5"
                     ? "bg-blue-600 border-blue-400"
                     : "bg-gray-800 border-gray-600 hover:bg-gray-700"
                 }`}
               >
-                단판제
+                5판 3선승
               </button>
             </div>
           </div>
@@ -524,26 +541,27 @@ export default function CreateGame() {
                   .map((champion) => (
                     <div
                       key={champion!.id}
-                      className="relative group"
-                      onClick={() => toggleChampionBan(champion!.id)}
+                      className="bg-gray-700 px-3 py-1 rounded-md flex items-center"
                     >
                       <Image
                         src={`https://ddragon.leagueoflegends.com/cdn/${
                           formData.patchVersion
                         }/img/champion/${champion!.id}.png`}
                         alt={champion!.name}
-                        width={40}
-                        height={40}
-                        className="rounded-md cursor-pointer border-2 border-red-500"
+                        width={24}
+                        height={24}
+                        className="rounded-md mr-2"
                       />
-                      <div className="absolute top-0 right-0 bg-red-500 rounded-bl-md rounded-tr-md w-5 h-5 flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">✖</span>
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center rounded-md transition-all">
-                        <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-bold">
-                          ✖
-                        </span>
-                      </div>
+                      <span className="text-sm">{champion!.name}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleChampionBan(champion!.id);
+                        }}
+                        className="ml-2 text-red-400 hover:text-red-500"
+                      >
+                        ✖
+                      </button>
                     </div>
                   ))}
               </div>
@@ -641,30 +659,34 @@ export default function CreateGame() {
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             ) : (
-              <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
                 {champions.map((champion) => (
                   <div
                     key={champion.id}
-                    className={`relative cursor-pointer transition-all ${
+                    className={`relative cursor-pointer transition-all flex flex-col items-center ${
                       formData.globalBans.includes(champion.id)
                         ? "ring-2 ring-red-500"
                         : ""
                     }`}
                     onClick={() => toggleChampionBan(champion.id)}
                   >
-                    <Image
-                      src={`https://ddragon.leagueoflegends.com/cdn/${formData.patchVersion}/img/champion/${champion.id}.png`}
-                      alt={champion.name}
-                      width={60}
-                      height={60}
-                      className="rounded-md"
-                    />
-                    {formData.globalBans.includes(champion.id) && (
-                      <div className="absolute top-0 right-0 bg-red-500 rounded-bl-md rounded-tr-md w-6 h-6 flex items-center justify-center">
-                        <span className="text-white text-sm font-bold">✖</span>
-                      </div>
-                    )}
-                    <p className="text-xs text-center mt-1 truncate">
+                    <div className="relative">
+                      <Image
+                        src={`https://ddragon.leagueoflegends.com/cdn/${formData.patchVersion}/img/champion/${champion.id}.png`}
+                        alt={champion.name}
+                        width={60}
+                        height={60}
+                        className="rounded-md"
+                      />
+                      {formData.globalBans.includes(champion.id) && (
+                        <div className="absolute top-0 right-0 bg-red-500 rounded-bl-md rounded-tr-md w-6 h-6 flex items-center justify-center">
+                          <span className="text-white text-sm font-bold">
+                            ✖
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-center mt-1 break-keep whitespace-normal">
                       {champion.name}
                     </p>
                   </div>

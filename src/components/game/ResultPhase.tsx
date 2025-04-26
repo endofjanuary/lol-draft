@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { GameInfo } from "@/types/game";
+import { GameInfo, ChampionData } from "@/types/game";
+import { useRouter } from "next/navigation";
 
 interface ResultPhaseProps {
   gameInfo: GameInfo;
@@ -15,7 +16,103 @@ export default function ResultPhase({
   onNextGame,
   isHost,
 }: ResultPhaseProps) {
+  const router = useRouter();
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
+  const [champions, setChampions] = useState<ChampionData[]>([]);
+
+  // Fetch champion data from Riot API
+  useEffect(() => {
+    const fetchChampions = async () => {
+      try {
+        const version = gameInfo.settings.version;
+        const language = "ko_KR";
+
+        const RIOT_BASE_URL = "https://ddragon.leagueoflegends.com";
+        const url = `${RIOT_BASE_URL}/cdn/${version}/data/${language}/champion.json`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch champions: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const championsArray = Object.values(data.data) as ChampionData[];
+        championsArray.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+        setChampions(championsArray);
+      } catch (error) {
+        console.error("Error fetching champion data:", error);
+      }
+    };
+
+    fetchChampions();
+  }, [gameInfo.settings.version]);
+
+  // 마지막 세트인지 확인하는 로직
+  const isFinalSet = useMemo(() => {
+    const matchFormat = gameInfo.settings.matchFormat || "bo1"; // 기본값 단판제
+    const currentSet = gameInfo.status.setNumber || 1; // 현재 세트 번호
+    const blueScore = gameInfo.blueScore || 0; // 블루팀 점수
+    const redScore = gameInfo.redScore || 0; // 레드팀 점수
+
+    // 단판제인 경우 항상 마지막 세트
+    if (matchFormat === "bo1") {
+      return true;
+    }
+
+    // 3판 2선승제(bo3)
+    if (matchFormat === "bo3") {
+      // 어느 한 팀이 2승을 달성한 경우
+      if (blueScore >= 2 || redScore >= 2) {
+        return true;
+      }
+      // 현재 3세트인 경우
+      if (currentSet >= 3) {
+        return true;
+      }
+    }
+
+    // 5판 3선승제(bo5)
+    if (matchFormat === "bo5") {
+      // 어느 한 팀이 3승을 달성한 경우
+      if (blueScore >= 3 || redScore >= 3) {
+        return true;
+      }
+      // 현재 5세트인 경우
+      if (currentSet >= 5) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [gameInfo]);
+
+  // 승패가 결정되는지 확인하는 로직
+  const isMatchDecided = useMemo(() => {
+    if (!selectedWinner) return false;
+
+    const matchFormat = gameInfo.settings.matchFormat || "bo1";
+    const blueScore = gameInfo.blueScore || 0;
+    const redScore = gameInfo.redScore || 0;
+
+    // bo1에서는 항상 승패가 결정됨
+    if (matchFormat === "bo1") {
+      return true;
+    }
+
+    // bo3에서는 한 팀이 1점이고 현재 세트에서 승리한 경우
+    if (matchFormat === "bo3") {
+      if (selectedWinner === "blue" && blueScore === 1) return true;
+      if (selectedWinner === "red" && redScore === 1) return true;
+    }
+
+    // bo5에서는 한 팀이 2점이고 현재 세트에서 승리한 경우
+    if (matchFormat === "bo5") {
+      if (selectedWinner === "blue" && blueScore === 2) return true;
+      if (selectedWinner === "red" && redScore === 2) return true;
+    }
+
+    return false;
+  }, [selectedWinner, gameInfo]);
 
   // Extract ban and pick data from gameInfo
   const blueBans: string[] = [];
@@ -86,8 +183,15 @@ export default function ResultPhase({
     // First send the result to the server
     onConfirmResult(selectedWinner);
 
-    // Then move to the next game
-    onNextGame();
+    // 마지막 세트가 아닐 경우에만 다음 게임으로 이동
+    if (!isFinalSet) {
+      onNextGame();
+    }
+  };
+
+  // 메인 페이지로 이동하는 핸들러 추가
+  const handleGoToMain = () => {
+    router.push("/");
   };
 
   // Get champion image URL from the champion ID
@@ -100,18 +204,36 @@ export default function ResultPhase({
   const renderTeamSlot = (team: string, position: number) => {
     const key = `${team}${position}`;
     const championId = team === "blue" ? bluePicks[key] : redPicks[key];
+    const championName = championId
+      ? champions.find((c: ChampionData) => c.id === championId)?.name ||
+        championId
+      : "";
 
     return (
-      <div className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden`}>
-        {championId && (
-          <Image
-            src={getChampionImageUrl(championId)}
-            alt={championId}
-            width={64}
-            height={64}
-            className="w-full h-full object-cover"
-          />
-        )}
+      <div className="flex items-center gap-2">
+        <div className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden`}>
+          {championId && (
+            <Image
+              src={getChampionImageUrl(championId)}
+              alt={championId}
+              width={64}
+              height={64}
+              className="w-full h-full object-cover"
+            />
+          )}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm">{`${team.toUpperCase()} ${position}`}</span>
+          {championName && (
+            <span
+              className={`text-xs ${
+                team === "blue" ? "text-blue-300" : "text-red-300"
+              }`}
+            >
+              {championName}
+            </span>
+          )}
+        </div>
       </div>
     );
   };
@@ -146,7 +268,10 @@ export default function ResultPhase({
       {/* Header */}
       <div className="text-center mb-4">
         <h2 className="text-2xl font-bold">GAME RESULT</h2>
-        <p className="text-lg">Set {gameInfo.status.setNumber}</p>
+        <p className="text-lg">
+          Set {gameInfo.status.setNumber}
+          {isFinalSet && " (최종 세트)"}
+        </p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-4">
@@ -181,7 +306,6 @@ export default function ResultPhase({
                   className="flex items-center gap-2"
                 >
                   {renderTeamSlot("blue", position)}
-                  <span className="text-sm">{`BLUE ${position}`}</span>
                 </div>
               ))}
             </div>
@@ -206,7 +330,7 @@ export default function ResultPhase({
           ) : (
             <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
               <p className="text-gray-400">
-                Game result image will be displayed here
+                Game Banner image will be displayed here
               </p>
             </div>
           )}
@@ -225,7 +349,9 @@ export default function ResultPhase({
             </button>
 
             <button
-              onClick={handleConfirmAndProceed}
+              onClick={
+                isMatchDecided ? handleGoToMain : handleConfirmAndProceed
+              }
               disabled={!isHost || !selectedWinner}
               className={`px-6 py-3 rounded-md font-bold transition-colors
                 ${
@@ -233,9 +359,13 @@ export default function ResultPhase({
                     ? "cursor-pointer"
                     : "cursor-not-allowed opacity-50"
                 }
-                bg-gray-600 hover:bg-gray-700`}
+                ${
+                  isMatchDecided
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-600 hover:bg-gray-700"
+                }`}
             >
-              다음 게임으로
+              {isMatchDecided ? "메인 페이지로" : "다음 게임으로"}
             </button>
 
             <button
@@ -279,7 +409,6 @@ export default function ResultPhase({
               {[1, 2, 3, 4, 5].map((position) => (
                 <div key={`red${position}`} className="flex items-center gap-2">
                   {renderTeamSlot("red", position)}
-                  <span className="text-sm">{`RED ${position}`}</span>
                 </div>
               ))}
             </div>

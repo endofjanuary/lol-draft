@@ -42,3 +42,6 @@ next-env.d.ts
 
 # server docs
 /docs-server
+
+# nvm
+.nvmrc

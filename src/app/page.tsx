@@ -68,6 +68,7 @@ export default function Home() {
                 onChange={(e) => setGameCode(e.target.value)}
                 className="w-full p-2 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                autoComplete="off"
               />
             </div>
 

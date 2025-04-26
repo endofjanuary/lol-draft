@@ -27,7 +27,17 @@
    yarn install
    ```
 
-3. 개발 서버 실행:
+3. 환경 변수 설정:
+
+   프로젝트 루트에 `.env.local` 파일을 생성하고 다음과 같이 설정합니다:
+
+   ```
+   NEXT_PUBLIC_API_URL=http://localhost:8000
+   ```
+
+   이 URL은 백엔드 서버의 주소를 지정합니다. 기본값은 http://localhost:8000입니다.
+
+4. 개발 서버 실행:
 
    ```bash
    npm run dev
@@ -35,7 +45,7 @@
    yarn dev
    ```
 
-4. 백엔드 서버 실행 (별도 리포지토리의 지침 참조)
+5. 백엔드 서버 실행 (별도 리포지토리의 지침 참조)
 
 ## 프로젝트 구조
 
@@ -54,16 +64,85 @@ lol-draft/
 │   │   │   ├── DraftPhase.tsx
 │   │   │   ├── LobbyPhase.tsx
 │   │   │   ├── NicknameModal.tsx
-│   │   │   └── ResultPhase.tsx
+│   │   │   ├── ResultPhase.tsx
+│   │   │   └── Timer.tsx
 │   │   └── solo/
 │   │       ├── SoloDraftPhase.tsx
 │   │       └── SoloResultView.tsx
+│   ├── utils/
+│   │   ├── apiConfig.ts
+│   │   ├── sessionStorage.ts
+│   │   └── championPositions.ts
 │   └── types/
 │       └── game.ts
 ├── docs/
 ├── public/
+├── .env.local
 ├── package.json
 └── README.md
+```
+
+## API 설정
+
+### API 기본 URL 설정
+
+프로젝트는 `apiConfig.ts` 파일에서 API 기본 URL을 관리합니다:
+
+```typescript
+export function getApiBaseUrl(): string {
+  // 환경 변수에서 API URL을 가져옵니다
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  // 환경 변수가 설정되지 않은 경우 기본값을 사용합니다
+  if (!apiUrl) {
+    console.warn(
+      "NEXT_PUBLIC_API_URL이 설정되지 않았습니다. 기본 URL을 사용합니다."
+    );
+    return "http://localhost:8000";
+  }
+
+  return apiUrl;
+}
+
+export const getSocketUrl = (): string => {
+  return getApiBaseUrl();
+};
+```
+
+### Riot API 사용
+
+- 롤 패치 버전은 기본적으로 `13.24.1`이 사용됩니다.
+- 게임 생성 시 특정 버전을 지정할 수 있습니다.
+- 버전 정보가 없을 경우 Riot API의 최신 버전을 자동으로 가져옵니다.
+
+```typescript
+// 버전 정보 가져오기
+const fetchVersions = async () => {
+  try {
+    const response = await fetch(
+      "https://ddragon.leagueoflegends.com/api/versions.json"
+    );
+    const versions = await response.json();
+    return versions[0]; // 첫 번째가 최신 버전
+  } catch (error) {
+    console.error("Failed to fetch versions:", error);
+    return "13.24.1"; // 기본 버전
+  }
+};
+
+// 챔피언 데이터 가져오기
+const fetchChampions = async (version) => {
+  try {
+    const response = await fetch(
+      `https://ddragon.leagueoflegends.com/cdn/${version}/data/ko_KR/champion.json`
+    );
+    const data = await response.json();
+    return Object.values(data.data);
+  } catch (error) {
+    console.error("Failed to fetch champions:", error);
+    throw error;
+  }
+};
 ```
 
 ## 코드 규칙
