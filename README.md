@@ -40,6 +40,14 @@ pnpm dev
 4. 모든 플레이어가 준비되면 밴픽 시작
 5. 게임 결과 확인 및 공유
 
+## 배포 및 CORS 설정
+
+### Netlify 배포 시 CORS 문제 해결
+
+Netlify에 배포 후 CORS 에러가 발생하는 경우, 백엔드 서버에서 다음과 같이 설정해야 합니다:
+
+자세한 내용은 [CORS 설정 가이드](./docs/cors-setup.md)를 참조하세요.
+
 ## 프로젝트 구조
 
 - `/src/app` - 페이지 및 라우팅
@@ -55,6 +63,7 @@ pnpm dev
 - [게임 모드](./docs/game-modes.md)
 - [API 및 소켓 이벤트](./docs/api.md)
 - [개발 가이드](./docs/development.md)
+- [CORS 설정 가이드](./docs/cors-setup.md)
 
 ## 라이센스
 
