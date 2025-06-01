@@ -47,12 +47,37 @@ export default function ResultPhase({
     fetchChampions();
   }, [gameInfo.settings.version]);
 
+  // 팀 이름 및 점수 가져오기 헬퍼 함수들
+  const getCurrentBlueTeamName = () => {
+    return gameInfo.status.team1Side === "blue"
+      ? gameInfo.status.team1Name
+      : gameInfo.status.team2Name;
+  };
+
+  const getCurrentRedTeamName = () => {
+    return gameInfo.status.team1Side === "red"
+      ? gameInfo.status.team1Name
+      : gameInfo.status.team2Name;
+  };
+
+  const getCurrentBlueScore = () => {
+    const team1Score = gameInfo.team1Score || 0;
+    const team2Score = gameInfo.team2Score || 0;
+    return gameInfo.status.team1Side === "blue" ? team1Score : team2Score;
+  };
+
+  const getCurrentRedScore = () => {
+    const team1Score = gameInfo.team1Score || 0;
+    const team2Score = gameInfo.team2Score || 0;
+    return gameInfo.status.team1Side === "red" ? team1Score : team2Score;
+  };
+
   // 마지막 세트인지 확인하는 로직
   const isFinalSet = useMemo(() => {
     const matchFormat = gameInfo.settings.matchFormat || "bo1"; // 기본값 단판제
     const currentSet = gameInfo.status.setNumber || 1; // 현재 세트 번호
-    const blueScore = gameInfo.blueScore || 0; // 블루팀 점수
-    const redScore = gameInfo.redScore || 0; // 레드팀 점수
+    const blueScore = getCurrentBlueScore(); // 현재 블루팀 점수
+    const redScore = getCurrentRedScore(); // 현재 레드팀 점수
 
     // 단판제인 경우 항상 마지막 세트
     if (matchFormat === "bo1") {
@@ -91,8 +116,8 @@ export default function ResultPhase({
     if (!selectedWinner) return false;
 
     const matchFormat = gameInfo.settings.matchFormat || "bo1";
-    const blueScore = gameInfo.blueScore || 0;
-    const redScore = gameInfo.redScore || 0;
+    const blueScore = getCurrentBlueScore();
+    const redScore = getCurrentRedScore();
 
     // bo1에서는 항상 승패가 결정됨
     if (matchFormat === "bo1") {
@@ -176,17 +201,12 @@ export default function ResultPhase({
     setSelectedWinner(winner);
   };
 
-  // New handler for confirming result and proceeding to next game
+  // New handler for confirming result (진영 선택은 백엔드에서 처리)
   const handleConfirmAndProceed = () => {
     if (!selectedWinner || !isHost) return;
 
-    // First send the result to the server
+    // 결과만 서버로 전송 (진영 선택은 별도 페이즈에서 처리)
     onConfirmResult(selectedWinner);
-
-    // 마지막 세트가 아닐 경우에만 다음 게임으로 이동
-    if (!isFinalSet) {
-      onNextGame();
-    }
   };
 
   // 메인 페이지로 이동하는 핸들러 추가
@@ -279,9 +299,9 @@ export default function ResultPhase({
         <div className="w-full md:w-1/4 bg-blue-900 bg-opacity-20 rounded-lg p-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-blue-400">
-              {gameInfo.status.blueTeamName || "Blue Team"}
+              {getCurrentBlueTeamName()}
             </h3>
-            <span className="text-xl">{gameInfo.blueScore || 0}</span>
+            <span className="text-xl">{getCurrentBlueScore()}</span>
           </div>
 
           {/* Blue Bans */}
@@ -365,7 +385,7 @@ export default function ResultPhase({
                     : "bg-gray-600 hover:bg-gray-700"
                 }`}
             >
-              {isMatchDecided ? "메인 페이지로" : "다음 게임으로"}
+              {isMatchDecided ? "메인 페이지로" : "결과 확정"}
             </button>
 
             <button
@@ -385,9 +405,9 @@ export default function ResultPhase({
         <div className="w-full md:w-1/4 bg-red-900 bg-opacity-20 rounded-lg p-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-red-400">
-              {gameInfo.status.redTeamName || "Red Team"}
+              {getCurrentRedTeamName()}
             </h3>
-            <span className="text-xl">{gameInfo.redScore || 0}</span>
+            <span className="text-xl">{getCurrentRedScore()}</span>
           </div>
 
           {/* Red Bans */}

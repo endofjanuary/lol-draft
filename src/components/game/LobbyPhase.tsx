@@ -80,11 +80,9 @@ export default function LobbyPhase({
     const positionsPerTeam = 1; // 항상 1로 설정 (5v5 모드 제거)
     const requiredPositions = [];
 
-    // 필요한 모든 포지션 목록 생성
-    for (let i = 1; i <= positionsPerTeam; i++) {
-      requiredPositions.push(`blue${i}`);
-      requiredPositions.push(`red${i}`);
-    }
+    // 필요한 모든 포지션 목록 생성 - 팀 기반으로 변경
+    requiredPositions.push("team1");
+    requiredPositions.push("team2");
 
     // 모든 필요한 포지션에 플레이어가 있는지 확인
     return requiredPositions.every((pos) =>
@@ -124,136 +122,136 @@ export default function LobbyPhase({
     return player.nickname === nickname;
   };
 
-  // Generate team slots based on game type
+  // Generate team slots based on game type - 팀 기반으로 변경
   const renderTeamSlots = () => {
     const slots = [];
-    const positionsPerTeam = 1; // 항상 1로 설정 (5v5 모드 제거)
 
-    // Blue team slots
-    for (let i = 1; i <= positionsPerTeam; i++) {
-      const pos = `blue${i}`;
-      const player = players.find((p) => p.position === pos);
-      const isCurrentPlayer = position === pos;
-      const isPlayerHost = player?.isHost || false;
-      const isCurrentPlayerReady = isCurrentPlayer && isReady;
-      const canChangePosition = !isReady;
+    // Team 1 slot
+    const team1Player = players.find((p) => p.position === "team1");
+    const isCurrentPlayerTeam1 = position === "team1";
+    const isPlayerHost = team1Player?.isHost || false;
+    const canChangePosition = !isReady;
 
-      slots.push(
-        <div
-          key={pos}
-          className={`p-4 rounded-md mb-2 ${
-            isCurrentPlayer
-              ? "bg-blue-700 border-2 border-yellow-300"
-              : player?.isReady
-              ? "bg-blue-800 border-2 border-green-400 shadow-md shadow-green-500/30"
-              : "bg-blue-900 hover:bg-blue-800"
-          } ${
-            !isCurrentPlayer && canChangePosition
-              ? "cursor-pointer"
-              : "cursor-default"
-          }`}
-          onClick={() => handlePositionChange(pos)}
-        >
-          <div className="flex justify-between items-center">
-            <span className="font-medium">
-              블루팀 대표
-              {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
+    // 현재 Team 1이 어느 진영인지 확인
+    const team1Side = gameInfo.status.team1Side || "blue";
+    const team1Color = team1Side === "blue" ? "blue" : "red";
+    const team1Name = gameInfo.status.team1Name || "Team 1";
+
+    slots.push(
+      <div
+        key="team1"
+        className={`p-4 rounded-md mb-2 ${
+          isCurrentPlayerTeam1
+            ? `bg-${team1Color}-700 border-2 border-yellow-300`
+            : team1Player?.isReady
+            ? `bg-${team1Color}-800 border-2 border-green-400 shadow-md shadow-green-500/30`
+            : `bg-${team1Color}-900 hover:bg-${team1Color}-800`
+        } ${
+          !isCurrentPlayerTeam1 && canChangePosition
+            ? "cursor-pointer"
+            : "cursor-default"
+        }`}
+        onClick={() => handlePositionChange("team1")}
+      >
+        <div className="flex justify-between items-center">
+          <span className="font-medium">
+            {team1Name} ({team1Side === "blue" ? "블루" : "레드"} 진영)
+            {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
+          </span>
+          {(team1Player?.isReady || (isCurrentPlayerTeam1 && isReady)) && (
+            <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-3 w-3 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              준비완료
             </span>
-            {(player?.isReady || (isCurrentPlayer && isReady)) && (
-              <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-3 w-3 mr-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                준비완료
-              </span>
-            )}
-          </div>
-          <div className="mt-1 text-lg">
-            {player ? (
-              <span className={isCurrentPlayer ? "font-bold" : ""}>
-                {player.nickname} {isCurrentUser(player) && "(나)"}
-              </span>
-            ) : (
-              "빈 자리"
-            )}
-          </div>
+          )}
         </div>
-      );
-    }
-
-    // Red team slots
-    for (let i = 1; i <= positionsPerTeam; i++) {
-      const pos = `red${i}`;
-      const player = players.find((p) => p.position === pos);
-      const isCurrentPlayer = position === pos;
-      const isPlayerHost = player?.isHost || false;
-      const isCurrentPlayerReady = isCurrentPlayer && isReady;
-      const canChangePosition = !isReady;
-
-      slots.push(
-        <div
-          key={pos}
-          className={`p-4 rounded-md mb-2 ${
-            isCurrentPlayer
-              ? "bg-red-700 border-2 border-yellow-300"
-              : player?.isReady
-              ? "bg-red-800 border-2 border-green-400 shadow-md shadow-green-500/30"
-              : "bg-red-900 hover:bg-red-800"
-          } ${
-            !isCurrentPlayer && canChangePosition
-              ? "cursor-pointer"
-              : "cursor-default"
-          }`}
-          onClick={() => handlePositionChange(pos)}
-        >
-          <div className="flex justify-between items-center">
-            <span className="font-medium">
-              레드팀 대표
-              {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
+        <div className="mt-1 text-lg">
+          {team1Player ? (
+            <span className={isCurrentPlayerTeam1 ? "font-bold" : ""}>
+              {team1Player.nickname} {isCurrentUser(team1Player) && "(나)"}
             </span>
-            {(player?.isReady || (isCurrentPlayer && isReady)) && (
-              <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-3 w-3 mr-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                준비완료
-              </span>
-            )}
-          </div>
-          <div className="mt-1 text-lg">
-            {player ? (
-              <span className={isCurrentPlayer ? "font-bold" : ""}>
-                {player.nickname} {isCurrentUser(player) && "(나)"}
-              </span>
-            ) : (
-              "빈 자리"
-            )}
-          </div>
+          ) : (
+            "빈 자리"
+          )}
         </div>
-      );
-    }
+      </div>
+    );
+
+    // Team 2 slot
+    const team2Player = players.find((p) => p.position === "team2");
+    const isCurrentPlayerTeam2 = position === "team2";
+    const isPlayerHost2 = team2Player?.isHost || false;
+
+    // 현재 Team 2가 어느 진영인지 확인
+    const team2Side = gameInfo.status.team2Side || "red";
+    const team2Color = team2Side === "blue" ? "blue" : "red";
+    const team2Name = gameInfo.status.team2Name || "Team 2";
+
+    slots.push(
+      <div
+        key="team2"
+        className={`p-4 rounded-md mb-2 ${
+          isCurrentPlayerTeam2
+            ? `bg-${team2Color}-700 border-2 border-yellow-300`
+            : team2Player?.isReady
+            ? `bg-${team2Color}-800 border-2 border-green-400 shadow-md shadow-green-500/30`
+            : `bg-${team2Color}-900 hover:bg-${team2Color}-800`
+        } ${
+          !isCurrentPlayerTeam2 && canChangePosition
+            ? "cursor-pointer"
+            : "cursor-default"
+        }`}
+        onClick={() => handlePositionChange("team2")}
+      >
+        <div className="flex justify-between items-center">
+          <span className="font-medium">
+            {team2Name} ({team2Side === "blue" ? "블루" : "레드"} 진영)
+            {isPlayerHost2 && <span className="text-yellow-400 ml-2">👑</span>}
+          </span>
+          {(team2Player?.isReady || (isCurrentPlayerTeam2 && isReady)) && (
+            <span className="bg-green-600 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-3 w-3 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              준비완료
+            </span>
+          )}
+        </div>
+        <div className="mt-1 text-lg">
+          {team2Player ? (
+            <span className={isCurrentPlayerTeam2 ? "font-bold" : ""}>
+              {team2Player.nickname} {isCurrentUser(team2Player) && "(나)"}
+            </span>
+          ) : (
+            "빈 자리"
+          )}
+        </div>
+      </div>
+    );
 
     return slots;
   };

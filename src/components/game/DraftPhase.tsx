@@ -59,7 +59,7 @@ export default function DraftPhase({
   const [redPicks, setRedPicks] = useState<{ [key: string]: string }>({});
 
   const [currentTurnPosition, setCurrentTurnPosition] =
-    useState<string>("blue1");
+    useState<string>("team1");
 
   // Add new state for random champion selection
   const [availableChampions, setAvailableChampions] = useState<ChampionData[]>(
@@ -217,31 +217,46 @@ export default function DraftPhase({
     prevPhaseRef.current = currentPhase;
 
     // 새로운 페이즈에 대한 플레이어 턴 계산
-    // 현재 턴 위치 업데이트
+    // 현재 턴 위치 업데이트 - 진영 기반에서 팀 기반으로 변경
     const updatePlayersTurn = (phase: number) => {
+      // 현재 어느 팀이 어느 진영인지 확인
+      const team1Side = gameInfo.status.team1Side || "blue";
+      const team2Side = gameInfo.status.team2Side || "red";
+
+      // 진영 기반 턴 순서를 팀 기반으로 변환하는 함수
+      const getTeamForSide = (side: "blue" | "red") => {
+        return team1Side === side ? "team1" : "team2";
+      };
+
       // Ban phase 1 (blue→red→blue→red→blue→red)
       if (phase >= 1 && phase <= 6) {
-        setCurrentTurnPosition(phase % 2 === 1 ? "blue1" : "red1");
+        const isBluePhase = phase % 2 === 1;
+        setCurrentTurnPosition(
+          isBluePhase ? getTeamForSide("blue") : getTeamForSide("red")
+        );
       }
       // Pick phase 1 (blue→red→red→blue→blue→red)
       else if (phase >= 7 && phase <= 12) {
-        if (phase === 7) setCurrentTurnPosition("blue1");
-        else if (phase === 8) setCurrentTurnPosition("red1");
-        else if (phase === 9) setCurrentTurnPosition("red2");
-        else if (phase === 10) setCurrentTurnPosition("blue2");
-        else if (phase === 11) setCurrentTurnPosition("blue3");
-        else if (phase === 12) setCurrentTurnPosition("red3");
+        if (phase === 7) setCurrentTurnPosition(getTeamForSide("blue"));
+        else if (phase === 8) setCurrentTurnPosition(getTeamForSide("red"));
+        else if (phase === 9) setCurrentTurnPosition(getTeamForSide("red"));
+        else if (phase === 10) setCurrentTurnPosition(getTeamForSide("blue"));
+        else if (phase === 11) setCurrentTurnPosition(getTeamForSide("blue"));
+        else if (phase === 12) setCurrentTurnPosition(getTeamForSide("red"));
       }
       // Ban phase 2 (red→blue→red→blue)
       else if (phase >= 13 && phase <= 16) {
-        setCurrentTurnPosition(phase % 2 === 0 ? "blue1" : "red1");
+        const isBluePhase = phase % 2 === 0;
+        setCurrentTurnPosition(
+          isBluePhase ? getTeamForSide("blue") : getTeamForSide("red")
+        );
       }
       // Pick phase 2 (red→blue→blue→red)
       else if (phase >= 17 && phase <= 20) {
-        if (phase === 17) setCurrentTurnPosition("red4");
-        else if (phase === 18) setCurrentTurnPosition("blue4");
-        else if (phase === 19) setCurrentTurnPosition("blue5");
-        else if (phase === 20) setCurrentTurnPosition("red5");
+        if (phase === 17) setCurrentTurnPosition(getTeamForSide("red"));
+        else if (phase === 18) setCurrentTurnPosition(getTeamForSide("blue"));
+        else if (phase === 19) setCurrentTurnPosition(getTeamForSide("blue"));
+        else if (phase === 20) setCurrentTurnPosition(getTeamForSide("red"));
       }
     };
 
@@ -312,24 +327,24 @@ export default function DraftPhase({
     // Map phases to positions (simplified)
     if (phase >= 1 && phase <= 6) {
       // Ban phase 1 (blue→red→blue→red→blue→red)
-      setCurrentTurnPosition(phase % 2 === 1 ? "blue1" : "red1");
+      setCurrentTurnPosition(phase % 2 === 1 ? "team1" : "team2");
     } else if (phase >= 7 && phase <= 12) {
       // Pick phase 1 (blue→red→red→blue→blue→red)
-      if (phase === 7) setCurrentTurnPosition("blue1");
-      else if (phase === 8) setCurrentTurnPosition("red1");
-      else if (phase === 9) setCurrentTurnPosition("red2");
-      else if (phase === 10) setCurrentTurnPosition("blue2");
-      else if (phase === 11) setCurrentTurnPosition("blue3");
-      else if (phase === 12) setCurrentTurnPosition("red3");
+      if (phase === 7) setCurrentTurnPosition("team1");
+      else if (phase === 8) setCurrentTurnPosition("team2");
+      else if (phase === 9) setCurrentTurnPosition("team2");
+      else if (phase === 10) setCurrentTurnPosition("team1");
+      else if (phase === 11) setCurrentTurnPosition("team1");
+      else if (phase === 12) setCurrentTurnPosition("team2");
     } else if (phase >= 13 && phase <= 16) {
       // Ban phase 2 (red→blue→red→blue)
-      setCurrentTurnPosition(phase % 2 === 0 ? "blue1" : "red1");
+      setCurrentTurnPosition(phase % 2 === 0 ? "team1" : "team2");
     } else if (phase >= 17 && phase <= 20) {
       // Pick phase 2 (red→blue→blue→red)
-      if (phase === 17) setCurrentTurnPosition("red4");
-      else if (phase === 18) setCurrentTurnPosition("blue4");
-      else if (phase === 19) setCurrentTurnPosition("blue5");
-      else if (phase === 20) setCurrentTurnPosition("red5");
+      if (phase === 17) setCurrentTurnPosition("team2");
+      else if (phase === 18) setCurrentTurnPosition("team1");
+      else if (phase === 19) setCurrentTurnPosition("team1");
+      else if (phase === 20) setCurrentTurnPosition("team2");
     }
   }, [gameInfo.status.phase]);
 
@@ -370,12 +385,12 @@ export default function DraftPhase({
         }
         // Phases 7-12 are first pick phase
         else if (phaseNum >= 7 && phaseNum <= 12) {
-          if (phaseNum === 7) actualBluePicks["blue1"] = selection;
-          else if (phaseNum === 8) actualRedPicks["red1"] = selection;
-          else if (phaseNum === 9) actualRedPicks["red2"] = selection;
-          else if (phaseNum === 10) actualBluePicks["blue2"] = selection;
-          else if (phaseNum === 11) actualBluePicks["blue3"] = selection;
-          else if (phaseNum === 12) actualRedPicks["red3"] = selection;
+          if (phaseNum === 7) actualBluePicks["team1"] = selection;
+          else if (phaseNum === 8) actualRedPicks["team2"] = selection;
+          else if (phaseNum === 9) actualRedPicks["team2"] = selection;
+          else if (phaseNum === 10) actualBluePicks["team1"] = selection;
+          else if (phaseNum === 11) actualBluePicks["team1"] = selection;
+          else if (phaseNum === 12) actualRedPicks["team2"] = selection;
         }
         // Phases 13-16 are second ban phase (alternating red, blue)
         else if (phaseNum >= 13 && phaseNum <= 16) {
@@ -392,10 +407,10 @@ export default function DraftPhase({
         }
         // Phases 17-20 are second pick phase
         else if (phaseNum >= 17 && phaseNum <= 20) {
-          if (phaseNum === 17) actualRedPicks["red4"] = selection;
-          else if (phaseNum === 18) actualBluePicks["blue4"] = selection;
-          else if (phaseNum === 19) actualBluePicks["blue5"] = selection;
-          else if (phaseNum === 20) actualRedPicks["red5"] = selection;
+          if (phaseNum === 17) actualRedPicks["team2"] = selection;
+          else if (phaseNum === 18) actualBluePicks["team1"] = selection;
+          else if (phaseNum === 19) actualBluePicks["team1"] = selection;
+          else if (phaseNum === 20) actualRedPicks["team2"] = selection;
         }
       }
     }
@@ -490,25 +505,25 @@ export default function DraftPhase({
           let teamPosition = "";
 
           // 픽 페이즈에 따라 포지션 결정
-          if (currentPhase === 7) teamPosition = "blue1";
-          else if (currentPhase === 8) teamPosition = "red1";
-          else if (currentPhase === 9) teamPosition = "red2";
-          else if (currentPhase === 10) teamPosition = "blue2";
-          else if (currentPhase === 11) teamPosition = "blue3";
-          else if (currentPhase === 12) teamPosition = "red3";
-          else if (currentPhase === 17) teamPosition = "red4";
-          else if (currentPhase === 18) teamPosition = "blue4";
-          else if (currentPhase === 19) teamPosition = "blue5";
-          else if (currentPhase === 20) teamPosition = "red5";
+          if (currentPhase === 7) teamPosition = "team1";
+          else if (currentPhase === 8) teamPosition = "team2";
+          else if (currentPhase === 9) teamPosition = "team2";
+          else if (currentPhase === 10) teamPosition = "team1";
+          else if (currentPhase === 11) teamPosition = "team1";
+          else if (currentPhase === 12) teamPosition = "team2";
+          else if (currentPhase === 17) teamPosition = "team2";
+          else if (currentPhase === 18) teamPosition = "team1";
+          else if (currentPhase === 19) teamPosition = "team1";
+          else if (currentPhase === 20) teamPosition = "team2";
 
-          if (teamPosition.startsWith("blue")) {
+          if (teamPosition.startsWith("team1")) {
             const newBluePicks = { ...bluePicks };
             newBluePicks[teamPosition] = selectedChampion;
             setBluePicks(newBluePicks);
 
             // 전체 픽 리스트도 업데이트
             setPickedChampions({ ...redPicks, ...newBluePicks });
-          } else if (teamPosition.startsWith("red")) {
+          } else if (teamPosition.startsWith("team2")) {
             const newRedPicks = { ...redPicks };
             newRedPicks[teamPosition] = selectedChampion;
             setRedPicks(newRedPicks);
@@ -546,14 +561,17 @@ export default function DraftPhase({
   const isPlayerTurn = () => {
     const phase = gameInfo.status.phase;
     const playerType = gameInfo.settings.playerType;
-    const playerTeam = position.startsWith("blue") ? "blue" : "red";
-    const playerNumber = parseInt(
-      position.replace("blue", "").replace("red", ""),
-      10
-    );
+    const playerTeam = position.startsWith("team1") ? "team1" : "team2";
 
     // Spectator can never take actions
     if (position === "spectator") return false;
+
+    // 현재 어느 팀이 어느 진영인지 확인
+    const team1Side = gameInfo.status.team1Side || "blue";
+    const team2Side = gameInfo.status.team2Side || "red";
+
+    // 플레이어 팀이 현재 어느 진영인지 확인
+    const playerSide = playerTeam === "team1" ? team1Side : team2Side;
 
     // In 1v1 mode, each player handles all picks and bans for their team
     if (playerType === "1v1") {
@@ -566,8 +584,8 @@ export default function DraftPhase({
           (phase >= 13 && phase <= 16 && phase % 2 === 0); // Second ban phase
 
         return (
-          (isBlueTeamTurn && playerTeam === "blue") ||
-          (!isBlueTeamTurn && playerTeam === "red")
+          (isBlueTeamTurn && playerSide === "blue") ||
+          (!isBlueTeamTurn && playerSide === "red")
         );
       }
 
@@ -576,17 +594,17 @@ export default function DraftPhase({
         // Pick phase
         // First pick phase (7-12): blue→red→red→blue→blue→red
         if (phase >= 7 && phase <= 12) {
-          if (phase === 7) return playerTeam === "blue";
-          if (phase === 8 || phase === 9) return playerTeam === "red";
-          if (phase === 10 || phase === 11) return playerTeam === "blue";
-          if (phase === 12) return playerTeam === "red";
+          if (phase === 7) return playerSide === "blue";
+          if (phase === 8 || phase === 9) return playerSide === "red";
+          if (phase === 10 || phase === 11) return playerSide === "blue";
+          if (phase === 12) return playerSide === "red";
         }
 
         // Second pick phase (17-20): red→blue→blue→red
         if (phase >= 17 && phase <= 20) {
-          if (phase === 17) return playerTeam === "red";
-          if (phase === 18 || phase === 19) return playerTeam === "blue";
-          if (phase === 20) return playerTeam === "red";
+          if (phase === 17) return playerSide === "red";
+          if (phase === 18 || phase === 19) return playerSide === "blue";
+          if (phase === 20) return playerSide === "red";
         }
       }
     }
@@ -695,25 +713,25 @@ export default function DraftPhase({
       let teamPosition = "";
 
       // 픽 페이즈에 따라 포지션 결정
-      if (currentPhase === 7) teamPosition = "blue1";
-      else if (currentPhase === 8) teamPosition = "red1";
-      else if (currentPhase === 9) teamPosition = "red2";
-      else if (currentPhase === 10) teamPosition = "blue2";
-      else if (currentPhase === 11) teamPosition = "blue3";
-      else if (currentPhase === 12) teamPosition = "red3";
-      else if (currentPhase === 17) teamPosition = "red4";
-      else if (currentPhase === 18) teamPosition = "blue4";
-      else if (currentPhase === 19) teamPosition = "blue5";
-      else if (currentPhase === 20) teamPosition = "red5";
+      if (currentPhase === 7) teamPosition = "team1";
+      else if (currentPhase === 8) teamPosition = "team2";
+      else if (currentPhase === 9) teamPosition = "team2";
+      else if (currentPhase === 10) teamPosition = "team1";
+      else if (currentPhase === 11) teamPosition = "team1";
+      else if (currentPhase === 12) teamPosition = "team2";
+      else if (currentPhase === 17) teamPosition = "team2";
+      else if (currentPhase === 18) teamPosition = "team1";
+      else if (currentPhase === 19) teamPosition = "team1";
+      else if (currentPhase === 20) teamPosition = "team2";
 
-      if (teamPosition.startsWith("blue")) {
+      if (teamPosition.startsWith("team1")) {
         const newBluePicks = { ...bluePicks };
         newBluePicks[teamPosition] = championToConfirm;
         setBluePicks(newBluePicks);
 
         // 전체 픽 리스트도 업데이트
         setPickedChampions({ ...redPicks, ...newBluePicks });
-      } else if (teamPosition.startsWith("red")) {
+      } else if (teamPosition.startsWith("team2")) {
         const newRedPicks = { ...redPicks };
         newRedPicks[teamPosition] = championToConfirm;
         setRedPicks(newRedPicks);
@@ -763,7 +781,7 @@ export default function DraftPhase({
   };
 
   const renderBanSlot = (team: string, index: number) => {
-    const bans = team === "blue" ? blueBans : redBans;
+    const bans = team === "team1" ? blueBans : redBans;
     const championId = bans[index];
     const currentPhase = gameInfo.status.phase;
 
@@ -771,11 +789,11 @@ export default function DraftPhase({
     let banPhase;
     if (index < 3) {
       // 첫 번째 밴 페이즈 (1-6)
-      banPhase = team === "blue" ? index * 2 + 1 : index * 2 + 2;
+      banPhase = team === "team1" ? index * 2 + 1 : index * 2 + 2;
     } else {
       // 두 번째 밴 페이즈 (13-16)
       const secondBanIndex = index - 3;
-      if (team === "red") {
+      if (team === "team2") {
         banPhase = 13 + secondBanIndex * 2;
       } else {
         banPhase = 14 + secondBanIndex * 2;
@@ -808,518 +826,337 @@ export default function DraftPhase({
           </div>
         )}
         {shouldShowSelectedChampion && (
-          <div className="absolute inset-0 flex">
+          <div className="absolute inset-0 border-2 border-yellow-400 rounded-md">
             <Image
               src={getChampionImageUrl(currentPhaseSelectedChampion)}
               alt={currentPhaseSelectedChampion}
               width={40}
               height={40}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover opacity-80"
             />
-            <div className="absolute inset-0 champion-highlight"></div>
           </div>
         )}
       </div>
     );
   };
 
-  const renderTeamSlot = (team: string, position: number) => {
-    const key = `${team}${position}`;
-    const championId = team === "blue" ? bluePicks[key] : redPicks[key];
-    const currentPhase = gameInfo.status.phase;
-
-    // 픽 페이즈 계산 수정
-    let pickPhase;
-    if (position <= 3) {
-      // 첫 번째 픽 페이즈 (7-12)
-      if (team === "blue") {
-        if (position === 1) pickPhase = 7;
-        else if (position === 2) pickPhase = 10;
-        else if (position === 3) pickPhase = 11;
-      } else {
-        if (position === 1) pickPhase = 8;
-        else if (position === 2) pickPhase = 9;
-        else if (position === 3) pickPhase = 12;
-      }
-    } else {
-      // 두 번째 픽 페이즈 (17-20)
-      if (team === "blue") {
-        if (position === 4) pickPhase = 18;
-        else if (position === 5) pickPhase = 19;
-      } else {
-        if (position === 4) pickPhase = 17;
-        else if (position === 5) pickPhase = 20;
-      }
-    }
-
-    // 현재 페이즈가 정확히 이 슬롯의 픽 페이즈와 일치하는지 확인
-    const isCurrentPhase = currentPhase === pickPhase;
-
-    // 정확한 페이즈가 아니거나 선택이 확정된 상태면 선택 중인 챔피언 표시하지 않음
-    const shouldShowSelectedChampion =
-      isCurrentPhase && currentPhaseSelectedChampion && !selectionSent;
-
-    return (
-      <div
-        className={`w-16 h-16 rounded-md bg-gray-800 overflow-hidden relative`}
-      >
-        {championId && (
-          <Image
-            src={getChampionImageUrl(championId)}
-            alt={championId}
-            width={64}
-            height={64}
-            className="w-full h-full object-cover"
-          />
-        )}
-        {shouldShowSelectedChampion && (
-          <div className="absolute inset-0 flex">
-            <Image
-              src={getChampionImageUrl(currentPhaseSelectedChampion)}
-              alt={currentPhaseSelectedChampion}
-              width={64}
-              height={64}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 champion-highlight"></div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Timer timeout handler - useCallback으로 최적화하고 비동기적으로 처리
-  const handleTimerTimeout = useCallback(() => {
-    if (!playersTurn) return; // Only handle timeout if it's player's turn
-
-    const phase = gameInfo.status.phase;
-    console.log(`타이머 만료: 페이즈 ${phase}`);
-
-    // 비동기적으로 처리하여 렌더링 사이클과 분리
-    setTimeout(() => {
-      // For ban phases (1-6, 13-16)
-      if ((phase >= 1 && phase <= 6) || (phase >= 13 && phase <= 16)) {
-        console.log("밴 타임아웃 - 밴 건너뛰기");
-        // Skip ban by confirming with empty selection
-        onConfirmSelection();
-      }
-      // For pick phases (7-12, 17-20)
-      else if ((phase >= 7 && phase <= 12) || (phase >= 17 && phase <= 20)) {
-        // Select random champion
-        if (availableChampions.length > 0) {
-          const randomIndex = Math.floor(
-            Math.random() * availableChampions.length
-          );
-          const randomChampion = availableChampions[randomIndex];
-
-          console.log(`픽 타임아웃 - 랜덤 챔피언 선택됨: ${randomChampion.id}`);
-
-          // Set selected champion in local state
-          setSelectedChampion(randomChampion.id);
-          onSelectChampion(randomChampion.id);
-
-          // 상태 업데이트 후 확인 - 충분한 지연 시간 적용
-          setTimeout(() => {
-            console.log(`랜덤 선택 확정: ${randomChampion.id}`);
-            onConfirmSelection();
-          }, 500);
-        } else {
-          console.error("랜덤 선택할 사용 가능한 챔피언이 없습니다");
-          onConfirmSelection();
-        }
-      }
-    }, 0);
-  }, [
-    playersTurn,
-    gameInfo.status.phase,
-    availableChampions,
-    onConfirmSelection,
-    onSelectChampion,
-  ]);
-
-  // Render the timer with a stable reference
-  const renderTimer = () => {
-    // Only show timer when game has time limits enabled
-    if (!gameInfo.settings.timeLimit) return null;
-
-    return (
-      <div className="mb-4">
-        <Timer
-          duration={30} // 30 seconds per phase
-          isActive={playersTurn} // Only active during player's turn
-          onTimeout={handleTimerTimeout}
-          resetKey={`phase-${gameInfo.status.phase}`} // Change key to resetKey
-        />
-      </div>
-    );
-  };
-
-  // Show loading state while fetching champion data
-  if (isLoadingChampions) {
-    return (
-      <div className="min-h-screen bg-[#030C28] text-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-        <p className="ml-3">챔피언 데이터를 불러오는 중입니다...</p>
-      </div>
-    );
-  }
-
-  // Show error state if champion data fetch failed
-  if (championError) {
-    return (
-      <div className="min-h-screen bg-[#030C28] text-white flex flex-col items-center justify-center">
-        <div className="text-red-500 text-xl mb-4">⚠️ 오류</div>
-        <p className="text-center max-w-md">{championError}</p>
-        <p className="text-center text-sm mt-4">
-          페이지를 새로고침하여 다시 시도해주세요.
-        </p>
-      </div>
-    );
-  }
-
-  // Optimize the render to prevent unnecessary re-renders of the timer
   return (
-    <div className="min-h-screen bg-[#030C28] text-white p-4 flex flex-col items-center justify-center">
-      <style jsx global>{`
-        @keyframes fadeInOut {
-          0% {
-            background-color: rgba(0, 0, 0, 0);
-          }
-          50% {
-            background-color: rgba(0, 0, 0, 0.6);
-          }
-          100% {
-            background-color: rgba(0, 0, 0, 0);
-          }
-        }
-        .champion-highlight {
-          animation: fadeInOut 1.5s infinite;
-        }
-      `}</style>
-      {/* Use max-w container to limit overall width */}
-      <div className="w-full max-w-7xl">
-        {/* Phase indicator */}
-        <div className="text-center mb-4">
-          <h2 className="text-2xl font-bold">{getPhaseDescription()}</h2>
-          <p className="text-lg">
-            {playersTurn
-              ? `${position.startsWith("blue") ? "블루팀" : "레드팀"} 차례: ${
-                  getCurrentAction() === "BAN" ? "밴" : "픽"
-                } 선택`
-              : `${
-                  currentTurnPosition.startsWith("blue") ? "블루팀" : "레드팀"
-                } 차례: ${
-                  getCurrentAction() === "BAN" ? "밴" : "픽"
-                } 선택 대기 중`}
-          </p>
-          <p className="text-sm mt-1">진행 단계: {gameInfo.status.phase}/20</p>
-
-          {/* Render timer in its own div to isolate re-renders */}
-          {playersTurn && gameInfo.settings.timeLimit && (
-            <div className="mt-2">
-              <Timer
-                duration={30}
-                isActive={playersTurn}
-                onTimeout={handleTimerTimeout}
-                resetKey={`phase-${gameInfo.status.phase}`}
-              />
+    <div className="h-screen bg-[#030C28] text-white flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="bg-[#1e2328] border-b border-gray-700 p-4 flex-shrink-0">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="text-xl font-bold text-blue-400">
+            {gameInfo.status.team1Side === "blue"
+              ? gameInfo.status.team1Name
+              : gameInfo.status.team2Name}
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-semibold">이의반 내전 1경기 2세트</div>
+            <div className="text-sm text-gray-400">
+              Lobby #{gameInfo.game?.gameCode || "Unknown"}
             </div>
-          )}
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Blue Team */}
-          <div
-            className={`w-full md:w-1/4 bg-blue-900 ${
-              currentTurnPosition.startsWith("blue")
-                ? "bg-opacity-40 ring-2 ring-blue-400"
-                : "bg-opacity-20"
-            } rounded-lg p-4 relative transition-all duration-300`}
-          >
-            {currentTurnPosition.startsWith("blue") && (
-              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                {getCurrentAction() === "BAN" ? "밴 선택 중" : "픽 선택 중"}
-              </div>
-            )}
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-blue-400">
-                {gameInfo.status.blueTeamName || "블루팀"}
-              </h3>
-              <span className="text-xl">{gameInfo.blueScore || 0}</span>
-            </div>
-
-            {/* Blue Bans */}
-            <div className="mb-6">
-              <h4 className="text-sm text-gray-400 mb-2">금지 챔피언</h4>
-              <div className="flex flex-wrap gap-1">
-                {[0, 1, 2, 3, 4].map((index) => (
-                  <div
-                    key={`blue-ban-${index}`}
-                    className="w-10 h-10 rounded-md bg-gray-800 overflow-hidden"
-                  >
-                    {renderBanSlot("blue", index)}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Blue Picks */}
-            <div>
-              <h4 className="text-sm text-gray-400 mb-2">선택 챔피언</h4>
-              <div className="flex flex-col gap-2">
-                {[1, 2, 3, 4, 5].map((position) => {
-                  const key = `blue${position}`;
-                  const championId = bluePicks[key];
-                  const championName = championId
-                    ? champions.find((c) => c.id === championId)?.name ||
-                      championId
-                    : "";
-
-                  const isCurrentTurn = currentTurnPosition === key;
-
-                  return (
-                    <div
-                      key={key}
-                      className={`flex items-center gap-2 ${
-                        isCurrentTurn
-                          ? "bg-blue-800 bg-opacity-50 p-1 rounded-md"
-                          : ""
-                      }`}
-                    >
-                      <div
-                        className={`
-                      w-1 h-6 
-                      ${isCurrentTurn ? "bg-yellow-400" : "bg-gray-600"}
-                    `}
-                      ></div>
-                      {renderTeamSlot("blue", position)}
-                      <div className="flex flex-col">
-                        <span className="text-sm">
-                          {isCurrentTurn ? "➤ " : ""}
-                          {championName || "대기 중"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="text-yellow-400 font-bold text-lg mt-1">
+              {Math.max(
+                0,
+                60 -
+                  Math.floor(
+                    (Date.now() - (gameInfo.status.lastUpdatedAt || 0)) / 1000
+                  )
+              )}
             </div>
           </div>
+          <div className="text-xl font-bold text-red-400">
+            {gameInfo.status.team2Side === "red"
+              ? gameInfo.status.team2Name
+              : gameInfo.status.team1Name}
+          </div>
+        </div>
+      </div>
 
-          {/* Champion Selection Grid */}
-          <div className="w-full md:w-2/4 bg-gray-900 bg-opacity-30 rounded-lg p-4 flex flex-col">
-            {position === "spectator" ? (
-              <div className="flex flex-col items-center justify-center h-full">
-                {/* Banner Image */}
-                {gameInfo.settings.bannerImage || gameInfo.bannerImage ? (
-                  <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
-                    <Image
-                      src={
-                        gameInfo.settings.bannerImage ||
-                        gameInfo.bannerImage ||
-                        ""
-                      }
-                      alt="Tournament Banner"
-                      width={500}
-                      height={250}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full h-64 bg-gray-800 rounded-lg mb-4 flex items-center justify-center">
-                    <p className="text-gray-400">
-                      게임 배너 이미지가 표시됩니다
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <h3 className="text-lg font-bold mb-4">챔피언 선택</h3>
+      {/* Main Draft Area */}
+      <div className="flex-1 flex max-w-7xl mx-auto w-full min-h-0">
+        {/* Left Team (Blue Side) */}
+        <div className="w-80 bg-[#1e2328] border-r border-gray-700 p-4 flex-shrink-0 overflow-y-auto">
+          <div className="space-y-3">
+            {Array.from({ length: 5 }, (_, i) => {
+              const playerNum = i + 1;
 
-                {/* Search and filter controls */}
-                <div className="mb-4 flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    placeholder="챔피언 검색..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-grow p-2 rounded-md bg-gray-700 border border-gray-600"
-                  />
-                  <select
-                    value={tagFilter || ""}
-                    onChange={(e) =>
-                      setTagFilter((e.target.value as ChampionPosition) || null)
-                    }
-                    className="p-2 rounded-md bg-gray-700 border border-gray-600"
-                  >
-                    <option value="">전체 포지션</option>
-                    {championPositions.map((position) => (
-                      <option key={position} value={position}>
-                        {position}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              // 1v1 모드에서 각 플레이어 슬롯에 해당하는 픽 페이즈의 챔피언 가져오기
+              let championId = null;
+              if (gameInfo.settings.playerType === "1v1") {
+                const phaseData = gameInfo.status.phaseData || [];
 
-                {/* Champions grid */}
-                <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2 mb-4 max-h-[400px] overflow-y-auto p-2">
-                  {filteredChampions.map((champion) => {
-                    const isUnavailable = isChampionDisabled(champion.id);
-                    return (
-                      <div
-                        key={champion.id}
-                        className={`relative cursor-pointer transition-all ${
-                          isUnavailable
-                            ? "cursor-not-allowed"
-                            : "hover:scale-105"
-                        } ${
-                          selectedChampion === champion.id
-                            ? "ring-2 ring-yellow-400"
-                            : ""
-                        }`}
-                        onClick={() => handleChampionClick(champion.id)}
-                      >
+                // 각 플레이어 슬롯별 픽 페이즈 매핑
+                const pickPhases =
+                  gameInfo.status.team1Side === "blue"
+                    ? [7, 10, 11, 18, 19] // 블루팀 픽 페이즈들
+                    : [8, 9, 12, 17, 20]; // 레드팀 픽 페이즈들
+
+                const phaseIndex = pickPhases[i];
+                if (phaseIndex && phaseData[phaseIndex]) {
+                  championId = phaseData[phaseIndex];
+                }
+              }
+
+              return (
+                <div
+                  key={`left-player-${i}`}
+                  className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gray-800 rounded-md overflow-hidden border border-gray-600 flex-shrink-0">
+                      {championId && (
                         <Image
-                          src={getChampionImageUrl(champion.id)}
-                          alt={champion.name}
-                          width={60}
-                          height={60}
-                          className={`w-full rounded-md ${
-                            isUnavailable ? "grayscale opacity-40" : ""
-                          }`}
-                        />
-                        <p
-                          className={`text-xs text-center mt-1 truncate ${
-                            isUnavailable ? "text-gray-500" : ""
-                          }`}
-                        >
-                          {champion.name}
-                        </p>
-                      </div>
-                    );
-                  })}
-
-                  {filteredChampions.length === 0 && (
-                    <div className="col-span-full text-center py-8 text-gray-400">
-                      조건에 맞는 챔피언이 없습니다
-                    </div>
-                  )}
-                </div>
-
-                {/* Selection UI for player's turn */}
-                {playersTurn && (
-                  <div className="mt-auto flex flex-col items-center">
-                    <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-800 mb-2">
-                      {selectedChampion && (
-                        <Image
-                          src={getChampionImageUrl(selectedChampion)}
-                          alt={selectedChampion}
-                          width={64}
-                          height={64}
+                          src={getChampionImageUrl(championId)}
+                          alt={championId}
+                          width={48}
+                          height={48}
                           className="w-full h-full object-cover"
                         />
                       )}
                     </div>
-                    <button
-                      onClick={handleConfirmSelection}
-                      disabled={!selectedChampion}
-                      className={`
-                        px-4 py-2 rounded-md font-bold
-                        ${
-                          selectedChampion
-                            ? currentTurnPosition.startsWith("blue")
-                              ? "bg-blue-600 hover:bg-blue-700"
-                              : "bg-red-600 hover:bg-red-700"
-                            : "bg-gray-600 cursor-not-allowed opacity-50"
-                        }
-                      `}
-                    >
-                      {getCurrentAction() === "BAN" ? "밴" : "픽"} 확정하기
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Red Team */}
-          <div
-            className={`w-full md:w-1/4 bg-red-900 ${
-              currentTurnPosition.startsWith("red")
-                ? "bg-opacity-40 ring-2 ring-red-400"
-                : "bg-opacity-20"
-            } rounded-lg p-4 relative transition-all duration-300`}
-          >
-            {currentTurnPosition.startsWith("red") && (
-              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                {getCurrentAction() === "BAN" ? "밴 선택 중" : "픽 선택 중"}
-              </div>
-            )}
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-red-400">
-                {gameInfo.status.redTeamName || "레드팀"}
-              </h3>
-              <span className="text-xl">{gameInfo.redScore || 0}</span>
-            </div>
-
-            {/* Red Bans */}
-            <div className="mb-6">
-              <h4 className="text-sm text-gray-400 mb-2">금지 챔피언</h4>
-              <div className="flex flex-wrap gap-1">
-                {[0, 1, 2, 3, 4].map((index) => (
-                  <div
-                    key={`red-ban-${index}`}
-                    className="w-10 h-10 rounded-md bg-gray-800 overflow-hidden"
-                  >
-                    {renderBanSlot("red", index)}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Red Picks */}
-            <div>
-              <h4 className="text-sm text-gray-400 mb-2">선택 챔피언</h4>
-              <div className="flex flex-col gap-2">
-                {[1, 2, 3, 4, 5].map((position) => {
-                  const key = `red${position}`;
-                  const championId = redPicks[key];
-                  const championName = championId
-                    ? champions.find((c) => c.id === championId)?.name ||
-                      championId
-                    : "";
-
-                  const isCurrentTurn = currentTurnPosition === key;
-
-                  return (
-                    <div
-                      key={key}
-                      className={`flex items-center gap-2 ${
-                        isCurrentTurn
-                          ? "bg-red-800 bg-opacity-50 p-1 rounded-md"
-                          : ""
-                      }`}
-                    >
-                      <div
-                        className={`
-                      w-1 h-6 
-                      ${isCurrentTurn ? "bg-yellow-400" : "bg-gray-600"}
-                    `}
-                      ></div>
-                      {renderTeamSlot("red", position)}
-                      <div className="flex flex-col">
-                        <span className="text-sm">
-                          {isCurrentTurn ? "➤ " : ""}
-                          {championName || "대기 중"}
-                        </span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-white truncate">
+                        {championId
+                          ? champions.find((c) => c.id === championId)?.name ||
+                            championId
+                          : "Champion Name"}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        Player {playerNum}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Blue Team Bans */}
+          <div className="mt-6">
+            <div className="grid grid-cols-5 gap-2">
+              {Array.from({ length: 5 }, (_, i) => (
+                <div key={`blue-ban-${i}`}>
+                  {renderBanSlot(
+                    gameInfo.status.team1Side === "blue" ? "team1" : "team2",
+                    i
+                  )}
+                </div>
+              ))}
             </div>
           </div>
+        </div>
+
+        {/* Center Champion Selection */}
+        <div className="flex-1 bg-[#0f1419] p-6 flex flex-col min-h-0">
+          {/* Current Phase Info */}
+          <div className="text-center mb-4 flex-shrink-0">
+            <h2 className="text-2xl font-bold mb-2">{getPhaseDescription()}</h2>
+            <div className="text-lg text-gray-300 mb-2">
+              Phase {gameInfo.status.phase} - {getCurrentAction()}
+            </div>
+
+            {/* Current Turn */}
+            <div className="bg-gray-800/50 rounded-lg p-3 mb-4">
+              {playersTurn ? (
+                <span className="text-green-400 font-semibold text-lg">
+                  🎯 당신의 차례입니다 - {getCurrentAction()}
+                </span>
+              ) : (
+                <span className="text-yellow-400">
+                  {currentTurnPosition === "team1"
+                    ? `${gameInfo.status.team1Name}의 차례`
+                    : `${gameInfo.status.team2Name}의 차례`}
+                </span>
+              )}
+            </div>
+
+            {/* Confirm Button */}
+            {playersTurn && selectedChampion && (
+              <button
+                onClick={handleConfirmSelection}
+                disabled={selectionSent}
+                className={`
+                  px-8 py-3 rounded-lg font-bold text-lg transition-all mb-4
+                  ${
+                    selectionSent
+                      ? "bg-gray-600 cursor-not-allowed text-gray-300"
+                      : "bg-green-600 hover:bg-green-700 text-white shadow-lg"
+                  }
+                `}
+              >
+                {selectionSent ? "확정 중..." : `${getCurrentAction()} 확정`}
+              </button>
+            )}
+          </div>
+
+          {/* Search and Filter */}
+          <div className="mb-4 flex gap-4 flex-shrink-0">
+            <input
+              type="text"
+              placeholder="챔피언 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <select
+              value={tagFilter || ""}
+              onChange={(e) =>
+                setTagFilter((e.target.value as ChampionPosition) || null)
+              }
+              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">모든 포지션</option>
+              {championPositions.map((position) => (
+                <option key={position} value={position}>
+                  {position}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Champion Grid */}
+          <div className="flex-1 min-h-0">
+            {isLoadingChampions ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                  <p>챔피언 목록을 불러오는 중...</p>
+                </div>
+              </div>
+            ) : championError ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center text-red-400">
+                  <p>챔피언 목록을 불러오는데 실패했습니다</p>
+                  <p className="text-sm">{championError}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full overflow-y-auto">
+                <div className="grid grid-cols-8 gap-3 p-2">
+                  {filteredChampions.map((champion) => {
+                    const isDisabled = isChampionDisabled(champion.id);
+                    const isSelected = selectedChampion === champion.id;
+
+                    return (
+                      <div
+                        key={champion.id}
+                        className={`
+                          relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all
+                          ${
+                            isDisabled
+                              ? "opacity-30 cursor-not-allowed border-gray-600"
+                              : isSelected
+                              ? "border-yellow-400 shadow-lg shadow-yellow-400/50 transform scale-110"
+                              : "border-gray-600 hover:border-blue-400 hover:scale-105"
+                          }
+                        `}
+                        onClick={() =>
+                          !isDisabled && handleChampionClick(champion.id)
+                        }
+                        title={champion.name}
+                      >
+                        <Image
+                          src={getChampionImageUrl(champion.id)}
+                          alt={champion.name}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
+                        {isDisabled && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-full h-0.5 bg-red-500 rotate-45 transform origin-center"></div>
+                          </div>
+                        )}
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-yellow-400/20"></div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Team (Red Side) */}
+        <div className="w-80 bg-[#1e2328] border-l border-gray-700 p-4 flex-shrink-0 overflow-y-auto">
+          <div className="space-y-3">
+            {Array.from({ length: 5 }, (_, i) => {
+              const playerNum = i + 1;
+
+              // 1v1 모드에서 각 플레이어 슬롯에 해당하는 픽 페이즈의 챔피언 가져오기
+              let championId = null;
+              if (gameInfo.settings.playerType === "1v1") {
+                const phaseData = gameInfo.status.phaseData || [];
+
+                // 각 플레이어 슬롯별 픽 페이즈 매핑
+                const pickPhases =
+                  gameInfo.status.team2Side === "red"
+                    ? [8, 9, 12, 17, 20] // 레드팀 픽 페이즈들
+                    : [7, 10, 11, 18, 19]; // 블루팀 픽 페이즈들
+
+                const phaseIndex = pickPhases[i];
+                if (phaseIndex && phaseData[phaseIndex]) {
+                  championId = phaseData[phaseIndex];
+                }
+              }
+
+              return (
+                <div
+                  key={`right-player-${i}`}
+                  className="bg-red-900/20 border border-red-500/30 rounded-lg p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gray-800 rounded-md overflow-hidden border border-gray-600 flex-shrink-0">
+                      {championId && (
+                        <Image
+                          src={getChampionImageUrl(championId)}
+                          alt={championId}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-white truncate">
+                        {championId
+                          ? champions.find((c) => c.id === championId)?.name ||
+                            championId
+                          : "Champion Name"}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        Player {playerNum}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Red Team Bans */}
+          <div className="mt-6">
+            <div className="grid grid-cols-5 gap-2">
+              {Array.from({ length: 5 }, (_, i) => (
+                <div key={`red-ban-${i}`}>
+                  {renderBanSlot(
+                    gameInfo.status.team2Side === "red" ? "team2" : "team1",
+                    i
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Banner */}
+      <div className="bg-[#1e2328] border-t border-gray-700 p-4 flex-shrink-0">
+        <div className="text-center text-gray-400">
+          <div className="bg-gray-800/50 rounded-lg p-3">광고 배너</div>
         </div>
       </div>
     </div>

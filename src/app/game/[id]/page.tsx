@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import NicknameModal from "@/components/game/NicknameModal";
 import LobbyPhase from "@/components/game/LobbyPhase";
 import DraftPhase from "@/components/game/DraftPhase";
 import ResultPhase from "@/components/game/ResultPhase";
+import SideChoicePhase from "@/components/game/SideChoicePhase";
 import { GameInfo, Player } from "@/types/game";
 import { getApiBaseUrl, getSocketUrl } from "@/utils/apiConfig";
 import {
@@ -20,9 +21,7 @@ export default function GamePage() {
   const { id } = useParams();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [showNicknameModal, setShowNicknameModal] = useState(true);
-  const [nickname, setNickname] = useState(
-    () => sessionStorage.getItem(SESSION_KEYS.NICKNAME) || ""
-  );
+  const [nickname, setNickname] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gameInfo, setGameInfo] = useState<GameInfo | null>(null);
@@ -33,9 +32,314 @@ export default function GamePage() {
     nickname: string;
     position: string;
   } | null>(null);
-  const [clientId, setClientId] = useState<string>(
-    () => sessionStorage.getItem(SESSION_KEYS.CLIENT_ID) || ""
+  const [clientId, setClientId] = useState<string>("");
+  const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false);
+
+  // 진영 선택 관련 상태
+  const [showSideChoice, setShowSideChoice] = useState(false);
+  const [losingSide, setLosingSide] = useState<"blue" | "red" | null>(null);
+
+  // Initialize client-side data after component mounts (SSR-safe)
+  useEffect(() => {
+    console.log("Initializing client-side data...");
+    if (typeof window !== "undefined") {
+      // 개발/테스트용 헬퍼 함수 등록
+      (window as any).clearGameSession = () => {
+        sessionStorage.removeItem(SESSION_KEYS.NICKNAME);
+        sessionStorage.removeItem(SESSION_KEYS.CLIENT_ID);
+        sessionStorage.removeItem(SESSION_KEYS.GAME_CODE);
+        console.log("Game session cleared. Refresh the page to start fresh.");
+        window.location.reload();
+      };
+
+      // 현재 게임 코드와 저장된 게임 코드 비교
+      const storedGameCode =
+        sessionStorage.getItem(SESSION_KEYS.GAME_CODE) || "";
+      const storedNickname =
+        sessionStorage.getItem(SESSION_KEYS.NICKNAME) || "";
+      const storedClientId =
+        sessionStorage.getItem(SESSION_KEYS.CLIENT_ID) || "";
+
+      console.log("Stored game code:", storedGameCode);
+      console.log("Current game code:", id);
+      console.log("Stored nickname:", storedNickname);
+      console.log("Stored client ID:", storedClientId);
+      console.log("💡 Tip: Run clearGameSession() in console to reset session");
+
+      // 다른 게임에서 왔거나 처음 접속하는 경우
+      if (storedGameCode !== id) {
+        console.log(
+          "Different game or first visit, clearing session and showing nickname modal"
+        );
+        // 세션 정보 초기화
+        sessionStorage.removeItem(SESSION_KEYS.NICKNAME);
+        sessionStorage.removeItem(SESSION_KEYS.CLIENT_ID);
+        sessionStorage.removeItem(SESSION_KEYS.GAME_CODE);
+
+        // 상태 초기화
+        setNickname("");
+        setClientId("");
+        setShowNicknameModal(true);
+        setHasAttemptedJoin(false);
+        setGameInfo(null);
+        setPosition("spectator");
+        setIsHost(false);
+      } else if (storedNickname) {
+        // 같은 게임에서 재접속한 경우
+        console.log("Returning to same game with stored nickname");
+        setNickname(storedNickname);
+        setClientId(storedClientId);
+        // 저장된 닉네임이 있어도 사용자가 다른 닉네임을 선택할 수 있도록 모달 표시
+        setShowNicknameModal(true);
+        setHasAttemptedJoin(false); // 재접속 시에는 다시 참가 시도 허용
+      } else {
+        // 같은 게임이지만 닉네임이 없는 경우
+        console.log("Same game but no stored nickname, showing modal");
+        setShowNicknameModal(true);
+        setHasAttemptedJoin(false);
+      }
+    }
+  }, [id]); // id를 의존성으로 추가하여 게임 코드 변경 시 재실행
+
+  // Fetch game info
+  const fetchGameInfo = useCallback(async () => {
+    console.log("fetchGameInfo called");
+    try {
+      setIsLoading(true);
+      const apiBaseUrl = getApiBaseUrl();
+      const url = `${apiBaseUrl}/games/${id}`;
+      console.log(`Fetching game info from: ${url}`);
+
+      const response = await fetch(url);
+      console.log("API response status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API error response:", errorText);
+        throw new Error(
+          `API request failed with status ${response.status}: ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+      console.log("Game info loaded successfully:", data);
+      console.log("Game version:", data.settings?.version);
+
+      setGameInfo(data);
+
+      // Update host status and position based on clientId
+      if (data.clients && clientId) {
+        const currentPlayer = data.clients.find(
+          (p: Player) => p.clientId === clientId
+        );
+        if (currentPlayer) {
+          setIsHost(currentPlayer.isHost);
+          setPosition(currentPlayer.position);
+          console.log("Current player info:", {
+            nickname: currentPlayer.nickname,
+            position: currentPlayer.position,
+            isHost: currentPlayer.isHost,
+          });
+        } else {
+          console.log("Current player not found in clients list");
+        }
+      } else {
+        console.log("No clients data or clientId not available");
+      }
+    } catch (error) {
+      console.error("Failed to fetch game info:", error);
+
+      // 네트워크 오류인지 확인
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        const apiBaseUrl = getApiBaseUrl();
+        console.warn(
+          `백엔드 서버에 연결할 수 없습니다. Mock 데이터를 사용합니다. (${apiBaseUrl})`
+        );
+
+        // Mock 데이터 사용
+        const mockGameInfo = {
+          game: {
+            gameCode: id as string,
+            createdAt: Date.now(),
+          },
+          settings: {
+            version: "15.11.1",
+            draftType: "tournament",
+            playerType: "1v1",
+            matchFormat: "bo1",
+            timeLimit: true,
+            globalBans: [],
+            bannerImage: undefined,
+          },
+          status: {
+            phase: 0,
+            phaseData: Array(21).fill(""),
+            team1Name: "Team 1",
+            team2Name: "Team 2",
+            team1Side: "blue" as const,
+            team2Side: "red" as const,
+            lastUpdatedAt: Date.now(),
+            setNumber: 1,
+            // 하위 호환성을 위한 필드들
+            blueTeamName: "Team 1",
+            redTeamName: "Team 2",
+          },
+          clients: [],
+          team1Score: 0,
+          team2Score: 0,
+          // 하위 호환성을 위한 필드들
+          blueScore: 0,
+          redScore: 0,
+        };
+
+        console.log("Using mock game info:", mockGameInfo);
+        setGameInfo(mockGameInfo);
+
+        // Mock 환경에서는 자동으로 호스트로 설정 (단, 아직 설정되지 않은 경우만)
+        if (!isHost) {
+          setIsHost(true);
+        }
+        if (position === "spectator") {
+          setPosition("team1");
+        }
+      } else {
+        setError(
+          `게임 정보를 불러오는데 실패했습니다: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, clientId, isHost, position]);
+
+  // Handle join game - prevent duplicate calls
+  const handleJoinGame = useCallback(
+    (userNickname: string) => {
+      console.log("handleJoinGame called with nickname:", userNickname);
+
+      // Prevent duplicate calls
+      if (isLoading || hasAttemptedJoin) {
+        console.log(
+          "Already loading or already attempted join, skipping duplicate join request"
+        );
+        return;
+      }
+
+      if (!socket || !userNickname.trim()) {
+        console.log("Socket not available or nickname empty, fallback to mock");
+        // 소켓이 없는 경우 mock 환경으로 처리
+        setNickname(userNickname);
+        sessionStorage.setItem(SESSION_KEYS.NICKNAME, userNickname);
+        sessionStorage.setItem(SESSION_KEYS.GAME_CODE, id as string);
+        setShowNicknameModal(false);
+        setHasAttemptedJoin(true);
+
+        // Mock 환경에서 게임 정보 직접 로드
+        fetchGameInfo();
+        return;
+      }
+
+      // Check if already joined (has game info and position is not spectator)
+      if (gameInfo && position !== "spectator") {
+        console.log("Already joined game, fetching latest info instead");
+        fetchGameInfo();
+        return;
+      }
+
+      setNickname(userNickname);
+      sessionStorage.setItem(SESSION_KEYS.NICKNAME, userNickname);
+      sessionStorage.setItem(SESSION_KEYS.GAME_CODE, id as string);
+      setIsLoading(true);
+      setHasAttemptedJoin(true);
+
+      console.log("Emitting join_game event...");
+      socket.emit(
+        "join_game",
+        {
+          gameCode: id,
+          nickname: userNickname,
+          position: "spectator",
+          socketId: getStoredSocketId(),
+        },
+        (response: any) => {
+          console.log("Join game response:", response);
+          if (response.status === "success") {
+            setShowNicknameModal(false);
+
+            // 클라이언트 ID 저장
+            if (response.data?.clientId) {
+              setClientId(response.data.clientId);
+              sessionStorage.setItem(
+                SESSION_KEYS.CLIENT_ID,
+                response.data.clientId
+              );
+            }
+
+            if (response.data?.position) {
+              setPosition(response.data.position);
+            }
+            if (response.data?.isHost !== undefined) {
+              setIsHost(response.data.isHost);
+            }
+            // 게임 정보를 불러오기 전에 잠시 대기
+            console.log("Join successful, fetching game info in 500ms...");
+            setTimeout(() => {
+              fetchGameInfo();
+            }, 500);
+          } else {
+            console.error("Join game failed:", response.message);
+            // 소켓 참가에 실패한 경우 mock 환경으로 fallback
+            console.log("Falling back to mock environment");
+            setShowNicknameModal(false);
+            fetchGameInfo();
+          }
+          setIsLoading(false);
+        }
+      );
+    },
+    [socket, id, isLoading, gameInfo, position, fetchGameInfo, hasAttemptedJoin]
   );
+
+  // Auto-join when socket connects and nickname is available
+  useEffect(() => {
+    console.log("Checking auto-join conditions:", {
+      isConnected,
+      nickname: !!nickname,
+      gameId: id,
+      showNicknameModal,
+      gameInfo: !!gameInfo,
+      position,
+      hasAttemptedJoin,
+    });
+
+    // 소켓이 연결되고, 닉네임이 있고, 모달이 숨겨진 상태이며, 아직 게임에 참가하지 않은 경우만 자동 참가
+    if (
+      isConnected &&
+      nickname &&
+      !showNicknameModal &&
+      id &&
+      socket &&
+      !gameInfo && // 게임 정보가 없을 때만 자동 참가
+      position === "spectator" && // 아직 팀에 참가하지 않은 경우
+      !hasAttemptedJoin // 아직 참가를 시도하지 않은 경우
+    ) {
+      console.log("Auto-joining game with stored credentials...");
+      setHasAttemptedJoin(true); // 참가 시도 플래그 설정
+      handleJoinGame(nickname);
+    }
+  }, [
+    isConnected,
+    nickname,
+    showNicknameModal,
+    id,
+    socket,
+    gameInfo,
+    position,
+    hasAttemptedJoin,
+    handleJoinGame,
+  ]);
 
   // Connect to socket.io server
   useEffect(() => {
@@ -57,13 +361,7 @@ export default function GamePage() {
       console.log("Connection successful, socket ID:", data.sid);
       storeSocketId(data.sid);
 
-      // 저장된 게임 정보가 있고, 현재 게임 코드와 일치하면 자동 재접속
-      const storedGameCode = sessionStorage.getItem(SESSION_KEYS.GAME_CODE);
-      const storedNickname = sessionStorage.getItem(SESSION_KEYS.NICKNAME);
-
-      if (storedGameCode === id && storedNickname && !showNicknameModal) {
-        handleJoinGame(storedNickname);
-      }
+      // 자동 재접속 로직은 별도 useEffect에서 처리
     });
 
     socketInstance.on("disconnect", () => {
@@ -121,6 +419,29 @@ export default function GamePage() {
     });
 
     socketInstance.on("game_result_confirmed", () => {
+      fetchGameInfo();
+    });
+
+    // 진영 선택 관련 이벤트 리스너
+    socketInstance.on("side_choice_phase", (data) => {
+      console.log("Side choice phase started:", data);
+      setLosingSide(data.losingSide);
+      setShowSideChoice(true);
+    });
+
+    socketInstance.on("next_set_started", (data) => {
+      console.log("Next set started:", data);
+      setShowSideChoice(false);
+      setLosingSide(null);
+      // 게임 정보 새로고침
+      fetchGameInfo();
+    });
+
+    socketInstance.on("match_finished", (data) => {
+      console.log("Match finished:", data);
+      setShowSideChoice(false);
+      setLosingSide(null);
+      // 게임 정보 새로고침
       fetchGameInfo();
     });
 
@@ -256,99 +577,11 @@ export default function GamePage() {
     };
   }, []);
 
-  const handleJoinGame = (userNickname: string) => {
-    if (!socket || !userNickname.trim()) return;
-
-    setNickname(userNickname);
-    sessionStorage.setItem(SESSION_KEYS.NICKNAME, userNickname);
-    sessionStorage.setItem(SESSION_KEYS.GAME_CODE, id as string);
-
-    socket.emit(
-      "join_game",
-      {
-        gameCode: id,
-        nickname: userNickname,
-        position: "spectator",
-        socketId: getStoredSocketId(),
-      },
-      (response: any) => {
-        if (response.status === "success") {
-          setShowNicknameModal(false);
-
-          // 클라이언트 ID 저장
-          if (response.data?.clientId) {
-            setClientId(response.data.clientId);
-            sessionStorage.setItem(
-              SESSION_KEYS.CLIENT_ID,
-              response.data.clientId
-            );
-          }
-
-          if (response.data?.position) {
-            setPosition(response.data.position);
-          }
-          if (response.data?.isHost !== undefined) {
-            setIsHost(response.data.isHost);
-          }
-          // 게임 정보를 불러오기 전에 잠시 대기
-          setTimeout(() => {
-            fetchGameInfo();
-          }, 500);
-        } else {
-          setError(response.message || "게임 참가에 실패했습니다.");
-        }
-      }
-    );
-  };
-
   // 게임 종료 또는 퇴장 시 세션 정보 정리
   const handleLeaveGame = () => {
     clearSocketSession();
     if (socket) {
       socket.disconnect();
-    }
-  };
-
-  // Fetch game info
-  const fetchGameInfo = async () => {
-    try {
-      setIsLoading(true);
-      const apiBaseUrl = getApiBaseUrl();
-      const url = `${apiBaseUrl}/games/${id}`;
-      console.log(`Fetching game info from: ${url}`);
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error("게임 정보를 불러오는데 실패했습니다.");
-      }
-
-      const data = await response.json();
-      console.log("Game info loaded:", data);
-      console.log("Game version:", data.settings?.version);
-
-      setGameInfo(data);
-
-      // Update host status and position based on clientId
-      if (data.clients && clientId) {
-        const currentPlayer = data.clients.find(
-          (p: Player) => p.clientId === clientId
-        );
-        if (currentPlayer) {
-          setIsHost(currentPlayer.isHost);
-          setPosition(currentPlayer.position);
-          console.log("Current player info:", {
-            nickname: currentPlayer.nickname,
-            position: currentPlayer.position,
-            isHost: currentPlayer.isHost,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch game info:", error);
-      setError("게임 정보를 불러오는데 실패했습니다.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -520,6 +753,26 @@ export default function GamePage() {
     });
   };
 
+  // Handle side choice
+  const handleSideChoice = (choice: "keep" | "swap") => {
+    if (!socket || !isHost) return;
+
+    socket.emit(
+      "choose_side",
+      {
+        gameCode: id,
+        choice: choice,
+      },
+      (response: any) => {
+        if (response.status !== "success") {
+          setError(response.message || "진영 선택에 실패했습니다.");
+        } else {
+          console.log("Side choice confirmed successfully");
+        }
+      }
+    );
+  };
+
   // Handle moving to next game (in a series)
   const handleNextGame = () => {
     if (!socket || !isHost || !gameInfo) return;
@@ -567,6 +820,7 @@ export default function GamePage() {
 
   // Show loading state if not connected
   if (!isConnected) {
+    console.log("Not connected, showing connection loading state");
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#030C28] text-white">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
@@ -577,8 +831,15 @@ export default function GamePage() {
 
   // Render game content based on phase
   const renderGameContent = () => {
+    console.log("renderGameContent called", {
+      isLoading,
+      gameInfo: !!gameInfo,
+      showNicknameModal,
+    });
+
     // Show loading while fetching game info
     if (isLoading) {
+      console.log("Showing loading state");
       return (
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
@@ -589,21 +850,48 @@ export default function GamePage() {
 
     // If game info is not available yet
     if (!gameInfo) {
+      console.log("No game info available yet");
       return (
         <div className="flex items-center justify-center min-h-screen">
-          <p className="text-gray-400">게임 정보를 불러오는 중입니다...</p>
+          <div className="text-center">
+            <p className="text-gray-400 mb-4">
+              게임 정보를 불러오는 중입니다...
+            </p>
+            <button
+              onClick={() => {
+                console.log("Manual fetch game info button clicked");
+                fetchGameInfo();
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md"
+            >
+              게임 정보 다시 불러오기
+            </button>
+          </div>
         </div>
       );
     }
 
     // Ensure we have the necessary gameInfo structure
     if (!gameInfo.status) {
+      console.log("Game info status not available");
       return (
         <div className="flex items-center justify-center min-h-screen">
           <p className="text-gray-400">
             게임 정보가 올바르지 않습니다. 다시 시도해주세요.
           </p>
         </div>
+      );
+    }
+
+    // 진영 선택 페이즈 표시
+    if (showSideChoice && losingSide) {
+      return (
+        <SideChoicePhase
+          gameInfo={gameInfo}
+          losingSide={losingSide}
+          onSideChoice={handleSideChoice}
+          isHost={isHost}
+        />
       );
     }
 
@@ -657,6 +945,29 @@ export default function GamePage() {
           isHost={isHost}
         />
       );
+    } else if (phase === 22) {
+      // Side choice phase (handled above)
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <p className="text-gray-400">진영 선택 중입니다...</p>
+        </div>
+      );
+    } else if (phase === 23) {
+      // Match finished
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold mb-4">경기 종료</h2>
+            <p className="text-xl mb-8">모든 경기가 완료되었습니다!</p>
+            <button
+              onClick={() => (window.location.href = "/")}
+              className="px-8 py-4 bg-green-600 hover:bg-green-700 rounded-lg font-bold text-lg"
+            >
+              메인 페이지로
+            </button>
+          </div>
+        </div>
+      );
     }
 
     return null;
@@ -680,15 +991,22 @@ export default function GamePage() {
           {lastLeftPlayer.nickname}님이 게임에서 나갔습니다. (포지션:{" "}
           {lastLeftPlayer.position === "spectator"
             ? "관전자"
-            : lastLeftPlayer.position.startsWith("blue")
-            ? "블루팀"
-            : "레드팀"}
+            : lastLeftPlayer.position === "team1"
+            ? "Team 1"
+            : lastLeftPlayer.position === "team2"
+            ? "Team 2"
+            : lastLeftPlayer.position}
           )
         </div>
       )}
 
       {/* Nickname Modal */}
-      {showNicknameModal && <NicknameModal onSubmit={handleJoinGame} />}
+      {showNicknameModal && (
+        <NicknameModal
+          onSubmit={handleJoinGame}
+          currentNickname={nickname || undefined}
+        />
+      )}
 
       {/* Game Content based on phase */}
       {!showNicknameModal && renderGameContent()}

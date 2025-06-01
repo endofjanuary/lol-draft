@@ -3,11 +3,16 @@
  */
 
 /**
+ * Player position types for team-based system
+ */
+export type PlayerPosition = "team1" | "team2" | "spectator" | string;
+
+/**
  * Player in a game session
  */
 export interface Player {
   nickname: string;
-  position: string;
+  position: PlayerPosition; // 팀 기반 포지션으로 변경
   isReady: boolean;
   isHost: boolean;
   clientId?: string; // 클라이언트 식별을 위한 고유 ID
@@ -32,14 +37,21 @@ export interface GameInfo {
   };
   status: {
     phase: number;
-    blueTeamName: string;
-    redTeamName: string;
+    team1Name: string; // 팀 1 이름
+    team2Name: string; // 팀 2 이름
+    team1Side: "blue" | "red"; // 팀 1의 현재 진영
+    team2Side: "blue" | "red"; // 팀 2의 현재 진영
     lastUpdatedAt: number;
     phaseData: string[];
     setNumber: number; // Current set in the match
-    // Scores removed from here as they are now at the top level
+    // 하위 호환성을 위한 필드들
+    blueTeamName: string;
+    redTeamName: string;
   };
   clients: Player[]; // Connected clients/players
+  team1Score?: number; // 팀 1 점수
+  team2Score?: number; // 팀 2 점수
+  // 하위 호환성을 위한 필드들
   blueScore?: number; // Now at top level
   redScore?: number; // Now at top level
   bannerImage?: string; // Support for top-level banner image
