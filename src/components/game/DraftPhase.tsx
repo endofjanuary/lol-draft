@@ -1022,14 +1022,30 @@ export default function DraftPhase({
             <div className="text-sm text-gray-400">
               Lobby #{gameInfo.game?.gameCode || "Unknown"}
             </div>
-            <div className="text-yellow-400 font-bold text-lg mt-1">
-              {Math.max(
-                0,
-                60 -
-                  Math.floor(
-                    (Date.now() - (gameInfo.status.lastUpdatedAt || 0)) / 1000
-                  )
-              )}
+            <div className="mt-2 w-[600px] mx-auto">
+              <Timer
+                duration={60} // 60초 타이머
+                isActive={
+                  gameInfo.settings.timeLimit && // timeLimit이 활성화되어 있고
+                  gameInfo.status.phase > 0 &&
+                  gameInfo.status.phase <= 20 // 드래프트 중일 때 모든 플레이어에게 활성화
+                }
+                onTimeout={() => {
+                  // 타임아웃 시 자동으로 랜덤 챔피언 선택 또는 다음 페이즈로 진행
+                  console.log("Phase timeout! Auto-proceeding...");
+                  if (playersTurn && !selectionSent) {
+                    // 플레이어 턴이고 아직 선택하지 않았다면 자동 진행
+                    // 실제 구현에서는 서버에 타임아웃 알림을 보낼 수 있음
+                    if (socket) {
+                      socket.emit("phase_timeout", {
+                        phase: gameInfo.status.phase,
+                        nickname: nickname,
+                      });
+                    }
+                  }
+                }}
+                resetKey={`${gameInfo.status.phase}`} // 페이즈가 변경될 때마다 타이머 리셋
+              />
             </div>
           </div>
           <div className="text-xl font-bold text-red-400">
@@ -1142,7 +1158,7 @@ export default function DraftPhase({
                   🎯 당신의 차례입니다 - {getCurrentAction()}
                 </span>
               ) : (
-                <span className="text-yellow-400">
+                <span className="text-yellow-400 font-semibold text-lg">
                   {currentTurnPosition === "team1"
                     ? `${gameInfo.status.team1Name}의 차례`
                     : `${gameInfo.status.team2Name}의 차례`}
@@ -1150,23 +1166,27 @@ export default function DraftPhase({
               )}
             </div>
 
-            {/* Confirm Button */}
-            {playersTurn && selectedChampion && (
-              <button
-                onClick={handleConfirmSelection}
-                disabled={selectionSent}
-                className={`
-                  px-8 py-3 rounded-lg font-bold text-lg transition-all mb-4
-                  ${
-                    selectionSent
-                      ? "bg-gray-600 cursor-not-allowed text-gray-300"
-                      : "bg-green-600 hover:bg-green-700 text-white shadow-lg"
-                  }
-                `}
-              >
-                {selectionSent ? "확정 중..." : `${getCurrentAction()} 확정`}
-              </button>
-            )}
+            {/* Confirm Button Area - 고정 높이로 레이아웃 시프트 방지 */}
+            <div className="h-16 flex items-center justify-center mb-4">
+              {playersTurn && selectedChampion ? (
+                <button
+                  onClick={handleConfirmSelection}
+                  disabled={selectionSent}
+                  className={`
+                    px-8 py-3 rounded-lg font-bold text-lg transition-all
+                    ${
+                      selectionSent
+                        ? "bg-gray-600 cursor-not-allowed text-gray-300"
+                        : "bg-green-600 hover:bg-green-700 text-white shadow-lg"
+                    }
+                  `}
+                >
+                  {selectionSent ? "확정 중..." : `${getCurrentAction()} 확정`}
+                </button>
+              ) : (
+                <div className="h-12"></div>
+              )}
+            </div>
           </div>
 
           {/* Search and Filter */}

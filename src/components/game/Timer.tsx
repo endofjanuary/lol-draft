@@ -114,9 +114,9 @@ export default function Timer({
   return (
     <div className="flex flex-col items-center">
       <div className={`text-2xl font-bold ${getTimerColor()}`}>{timeLeft}s</div>
-      <div className="w-full h-1 bg-gray-700 rounded-full mt-1">
+      <div className="w-full h-2 bg-gray-700 rounded-full mt-1">
         <div
-          className={`h-1 rounded-full transition-all duration-100 ease-linear ${
+          className={`h-2 rounded-full transition-all duration-100 ease-linear ${
             timeLeft <= 5
               ? "bg-red-500"
               : timeLeft <= 10
