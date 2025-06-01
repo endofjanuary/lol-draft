@@ -44,6 +44,7 @@ export interface GameInfo {
     lastUpdatedAt: number;
     phaseData: string[];
     setNumber: number; // Current set in the match
+    previousSetPicks?: { [setKey: string]: string[] }; // 하드피어리스 모드를 위한 이전 세트 픽 정보
     // 하위 호환성을 위한 필드들
     blueTeamName: string;
     redTeamName: string;

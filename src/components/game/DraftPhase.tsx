@@ -385,12 +385,17 @@ export default function DraftPhase({
         }
         // Phases 7-12 are first pick phase
         else if (phaseNum >= 7 && phaseNum <= 12) {
-          if (phaseNum === 7) actualBluePicks["team1"] = selection;
-          else if (phaseNum === 8) actualRedPicks["team2"] = selection;
-          else if (phaseNum === 9) actualRedPicks["team2"] = selection;
-          else if (phaseNum === 10) actualBluePicks["team1"] = selection;
-          else if (phaseNum === 11) actualBluePicks["team1"] = selection;
-          else if (phaseNum === 12) actualRedPicks["team2"] = selection;
+          // 1v1 모드에서는 각 픽에 고유한 키 사용
+          if (phaseNum === 7) actualBluePicks[`pick1`] = selection; // 블루 1픽
+          else if (phaseNum === 8)
+            actualRedPicks[`pick1`] = selection; // 레드 1픽
+          else if (phaseNum === 9)
+            actualRedPicks[`pick2`] = selection; // 레드 2픽
+          else if (phaseNum === 10)
+            actualBluePicks[`pick2`] = selection; // 블루 2픽
+          else if (phaseNum === 11)
+            actualBluePicks[`pick3`] = selection; // 블루 3픽
+          else if (phaseNum === 12) actualRedPicks[`pick3`] = selection; // 레드 3픽
         }
         // Phases 13-16 are second ban phase (alternating red, blue)
         else if (phaseNum >= 13 && phaseNum <= 16) {
@@ -407,10 +412,13 @@ export default function DraftPhase({
         }
         // Phases 17-20 are second pick phase
         else if (phaseNum >= 17 && phaseNum <= 20) {
-          if (phaseNum === 17) actualRedPicks["team2"] = selection;
-          else if (phaseNum === 18) actualBluePicks["team1"] = selection;
-          else if (phaseNum === 19) actualBluePicks["team1"] = selection;
-          else if (phaseNum === 20) actualRedPicks["team2"] = selection;
+          // 1v1 모드에서는 각 픽에 고유한 키 사용
+          if (phaseNum === 17) actualRedPicks[`pick4`] = selection; // 레드 4픽
+          else if (phaseNum === 18)
+            actualBluePicks[`pick4`] = selection; // 블루 4픽
+          else if (phaseNum === 19)
+            actualBluePicks[`pick5`] = selection; // 블루 5픽
+          else if (phaseNum === 20) actualRedPicks[`pick5`] = selection; // 레드 5픽
         }
       }
     }
@@ -504,26 +512,29 @@ export default function DraftPhase({
           // PICK 페이즈인 경우
           let teamPosition = "";
 
-          // 픽 페이즈에 따라 포지션 결정
-          if (currentPhase === 7) teamPosition = "team1";
-          else if (currentPhase === 8) teamPosition = "team2";
-          else if (currentPhase === 9) teamPosition = "team2";
-          else if (currentPhase === 10) teamPosition = "team1";
-          else if (currentPhase === 11) teamPosition = "team1";
-          else if (currentPhase === 12) teamPosition = "team2";
-          else if (currentPhase === 17) teamPosition = "team2";
-          else if (currentPhase === 18) teamPosition = "team1";
-          else if (currentPhase === 19) teamPosition = "team1";
-          else if (currentPhase === 20) teamPosition = "team2";
+          // 픽 페이즈에 따라 포지션 결정 - 1v1 모드에 맞게 고유 키 사용
+          if (currentPhase === 7) teamPosition = "pick1"; // 블루 1픽
+          else if (currentPhase === 8) teamPosition = "pick1"; // 레드 1픽
+          else if (currentPhase === 9) teamPosition = "pick2"; // 레드 2픽
+          else if (currentPhase === 10) teamPosition = "pick2"; // 블루 2픽
+          else if (currentPhase === 11) teamPosition = "pick3"; // 블루 3픽
+          else if (currentPhase === 12) teamPosition = "pick3"; // 레드 3픽
+          else if (currentPhase === 17) teamPosition = "pick4"; // 레드 4픽
+          else if (currentPhase === 18) teamPosition = "pick4"; // 블루 4픽
+          else if (currentPhase === 19) teamPosition = "pick5"; // 블루 5픽
+          else if (currentPhase === 20) teamPosition = "pick5"; // 레드 5픽
 
-          if (teamPosition.startsWith("team1")) {
+          // 현재 페이즈가 블루팀 턴인지 레드팀 턴인지 확인
+          const isBlueTeamPhase = [7, 10, 11, 18, 19].includes(currentPhase);
+
+          if (isBlueTeamPhase) {
             const newBluePicks = { ...bluePicks };
             newBluePicks[teamPosition] = selectedChampion;
             setBluePicks(newBluePicks);
 
             // 전체 픽 리스트도 업데이트
             setPickedChampions({ ...redPicks, ...newBluePicks });
-          } else if (teamPosition.startsWith("team2")) {
+          } else {
             const newRedPicks = { ...redPicks };
             newRedPicks[teamPosition] = selectedChampion;
             setRedPicks(newRedPicks);
@@ -616,24 +627,80 @@ export default function DraftPhase({
   const playersTurn = isPlayerTurn();
 
   const handleChampionClick = (championId: string) => {
-    if (!playersTurn) return; // Only allow selection during player's turn
+    console.log(`=== 챔피언 클릭: ${championId} ===`);
+    console.log("플레이어 턴:", playersTurn);
+    console.log("현재 페이즈:", gameInfo.status.phase);
 
-    // Don't allow selecting banned, picked, or globally banned champions
-    if (bannedChampions.includes(championId)) return;
-    if (Object.values(pickedChampions).includes(championId)) return;
-    if (
-      gameInfo.settings.globalBans &&
-      gameInfo.settings.globalBans.includes(championId)
-    )
+    if (!playersTurn) {
+      console.warn("플레이어 턴이 아님");
+      return; // Only allow selection during player's turn
+    }
+
+    // Check if champion is disabled and provide specific feedback
+    if (isChampionDisabled(championId)) {
+      // 현재 게임에서 밴된 챔피언들
+      const currentBannedChampions = [...blueBans, ...redBans].filter(Boolean);
+      const currentPickedChampions = [
+        ...Object.values(bluePicks),
+        ...Object.values(redPicks),
+      ].filter(Boolean);
+
+      // phaseData에서 직접 체크
+      const phaseData = gameInfo.status.phaseData || [];
+      const allSelectionsFromPhaseData: string[] = [];
+
+      for (
+        let phase = 1;
+        phase <= Math.min(gameInfo.status.phase - 1, 20);
+        phase++
+      ) {
+        if (phaseData[phase] && phaseData[phase].trim() !== "") {
+          allSelectionsFromPhaseData.push(phaseData[phase]);
+        }
+      }
+
+      let reason = "";
+      if (allSelectionsFromPhaseData.includes(championId)) {
+        reason = "이미 선택됨 (phaseData 기준)";
+      } else if (currentBannedChampions.includes(championId)) {
+        reason = "이미 밴된 챔피언입니다.";
+      } else if (currentPickedChampions.includes(championId)) {
+        reason = "이미 선택된 챔피언입니다.";
+      } else if (
+        gameInfo.settings.globalBans &&
+        gameInfo.settings.globalBans.includes(championId)
+      ) {
+        reason = "글로벌 밴 챔피언입니다.";
+      } else if (gameInfo.settings.draftType === "hardFearless") {
+        const currentSet = gameInfo.status.setNumber || 1;
+        if (currentSet > 1) {
+          const previousSetPicks = gameInfo.status.previousSetPicks || {};
+          for (let set = 1; set < currentSet; set++) {
+            const setPicks = previousSetPicks[`set${set}`] || [];
+            if (setPicks.includes(championId)) {
+              reason = `이전 세트(Set ${set})에서 선택된 챔피언입니다. (하드피어리스 모드)`;
+              break;
+            }
+          }
+        }
+      }
+
+      // 사용자에게 알림 표시 (부모 컴포넌트의 에러 핸들러 사용)
+      console.warn(`챔피언 선택 불가: ${championId} - ${reason}`);
+      console.log("phaseData 선택들:", allSelectionsFromPhaseData);
       return;
+    }
 
-    console.log(`Selected champion: ${championId}`); // Debug log
+    console.log(`챔피언 선택 가능: ${championId}`); // Debug log
 
     // Only update if the selection has changed to avoid unnecessary re-renders
     if (selectedChampion !== championId) {
       setSelectedChampion(championId);
       setSelectionSent(false); // Reset the selection sent flag
       onSelectChampion(championId);
+      console.log(`선택 상태 업데이트: ${championId}`);
+    } else {
+      console.log("이미 선택된 챔피언");
     }
   };
 
@@ -712,26 +779,29 @@ export default function DraftPhase({
       // PICK 페이즈인 경우
       let teamPosition = "";
 
-      // 픽 페이즈에 따라 포지션 결정
-      if (currentPhase === 7) teamPosition = "team1";
-      else if (currentPhase === 8) teamPosition = "team2";
-      else if (currentPhase === 9) teamPosition = "team2";
-      else if (currentPhase === 10) teamPosition = "team1";
-      else if (currentPhase === 11) teamPosition = "team1";
-      else if (currentPhase === 12) teamPosition = "team2";
-      else if (currentPhase === 17) teamPosition = "team2";
-      else if (currentPhase === 18) teamPosition = "team1";
-      else if (currentPhase === 19) teamPosition = "team1";
-      else if (currentPhase === 20) teamPosition = "team2";
+      // 픽 페이즈에 따라 포지션 결정 - 1v1 모드에 맞게 고유 키 사용
+      if (currentPhase === 7) teamPosition = "pick1"; // 블루 1픽
+      else if (currentPhase === 8) teamPosition = "pick1"; // 레드 1픽
+      else if (currentPhase === 9) teamPosition = "pick2"; // 레드 2픽
+      else if (currentPhase === 10) teamPosition = "pick2"; // 블루 2픽
+      else if (currentPhase === 11) teamPosition = "pick3"; // 블루 3픽
+      else if (currentPhase === 12) teamPosition = "pick3"; // 레드 3픽
+      else if (currentPhase === 17) teamPosition = "pick4"; // 레드 4픽
+      else if (currentPhase === 18) teamPosition = "pick4"; // 블루 4픽
+      else if (currentPhase === 19) teamPosition = "pick5"; // 블루 5픽
+      else if (currentPhase === 20) teamPosition = "pick5"; // 레드 5픽
 
-      if (teamPosition.startsWith("team1")) {
+      // 현재 페이즈가 블루팀 턴인지 레드팀 턴인지 확인
+      const isBlueTeamPhase = [7, 10, 11, 18, 19].includes(currentPhase);
+
+      if (isBlueTeamPhase) {
         const newBluePicks = { ...bluePicks };
         newBluePicks[teamPosition] = championToConfirm;
         setBluePicks(newBluePicks);
 
         // 전체 픽 리스트도 업데이트
         setPickedChampions({ ...redPicks, ...newBluePicks });
-      } else if (teamPosition.startsWith("team2")) {
+      } else {
         const newRedPicks = { ...redPicks };
         newRedPicks[teamPosition] = championToConfirm;
         setRedPicks(newRedPicks);
@@ -766,11 +836,73 @@ export default function DraftPhase({
   };
 
   const isChampionDisabled = (championId: string) => {
+    // phaseData를 직접 참조하여 실시간 상태 확인
+    const phaseData = gameInfo.status.phaseData || [];
+
+    // 현재 페이즈까지의 모든 선택된 챔피언들을 phaseData에서 직접 추출
+    const allSelectionsFromPhaseData: string[] = [];
+
+    for (
+      let phase = 1;
+      phase <= Math.min(gameInfo.status.phase - 1, 20);
+      phase++
+    ) {
+      if (phaseData[phase] && phaseData[phase].trim() !== "") {
+        allSelectionsFromPhaseData.push(phaseData[phase]);
+      }
+    }
+
+    // phaseData 기반 실시간 체크 (가장 정확한 소스)
+    const isAlreadySelected = allSelectionsFromPhaseData.includes(championId);
+
+    // 백업용: 로컬 상태 기반 체크
+    const currentBannedChampions = [...blueBans, ...redBans].filter(Boolean);
+    const currentPickedChampions = [
+      ...Object.values(bluePicks),
+      ...Object.values(redPicks),
+    ].filter(Boolean);
+
+    const isCurrentlyBanned = currentBannedChampions.includes(championId);
+    const isCurrentlyPicked = currentPickedChampions.includes(championId);
+
+    // 글로벌 밴 체크
+    const isGloballyBanned =
+      gameInfo.settings.globalBans &&
+      gameInfo.settings.globalBans.includes(championId);
+
+    // 하드피어리스 모드 체크
+    let isPreviousSetPicked = false;
+    if (gameInfo.settings.draftType === "hardFearless") {
+      const currentSet = gameInfo.status.setNumber || 1;
+      if (currentSet > 1) {
+        const previousSetPicks = gameInfo.status.previousSetPicks || {};
+        for (let set = 1; set < currentSet; set++) {
+          const setPicks = previousSetPicks[`set${set}`] || [];
+          if (setPicks.includes(championId)) {
+            isPreviousSetPicked = true;
+            break;
+          }
+        }
+      }
+    }
+
+    // 디버깅 로그 추가
+    if (isAlreadySelected || isCurrentlyBanned || isCurrentlyPicked) {
+      console.log(`챔피언 ${championId} 비활성화:`, {
+        phaseDataSelected: isAlreadySelected,
+        localBanned: isCurrentlyBanned,
+        localPicked: isCurrentlyPicked,
+        allSelectionsFromPhaseData,
+        currentPhase: gameInfo.status.phase,
+      });
+    }
+
     return (
-      bannedChampions.includes(championId) ||
-      Object.values(pickedChampions).includes(championId) ||
-      (gameInfo.settings.globalBans &&
-        gameInfo.settings.globalBans.includes(championId))
+      isAlreadySelected || // phaseData 기반 체크 (최우선)
+      isCurrentlyBanned ||
+      isCurrentlyPicked ||
+      isGloballyBanned ||
+      isPreviousSetPicked
     );
   };
 
@@ -840,6 +972,41 @@ export default function DraftPhase({
     );
   };
 
+  // Debug: 현재 밴/픽 상태 로깅
+  useEffect(() => {
+    const currentBannedChampions = [...blueBans, ...redBans].filter(Boolean);
+    const currentPickedChampions = [
+      ...Object.values(bluePicks),
+      ...Object.values(redPicks),
+    ].filter(Boolean);
+
+    console.log("=== 드래프트 상태 디버깅 ===");
+    console.log("현재 페이즈:", gameInfo.status.phase);
+    console.log("phaseData:", gameInfo.status.phaseData);
+    console.log("현재 밴된 챔피언들:", currentBannedChampions);
+    console.log("현재 픽된 챔피언들:", currentPickedChampions);
+    console.log("bluePicks:", bluePicks);
+    console.log("redPicks:", redPicks);
+    console.log("드래프트 타입:", gameInfo.settings.draftType);
+
+    if (gameInfo.settings.draftType === "hardFearless") {
+      console.log(
+        "하드피어리스 모드 - 이전 세트 픽들:",
+        gameInfo.status.previousSetPicks
+      );
+    }
+    console.log("=========================");
+  }, [
+    blueBans,
+    redBans,
+    bluePicks,
+    redPicks,
+    gameInfo.status.phase,
+    gameInfo.status.phaseData,
+    gameInfo.settings.draftType,
+    gameInfo.status.previousSetPicks,
+  ]);
+
   return (
     <div className="h-screen bg-[#030C28] text-white flex flex-col overflow-hidden">
       {/* Header */}
@@ -881,12 +1048,12 @@ export default function DraftPhase({
             {Array.from({ length: 5 }, (_, i) => {
               const playerNum = i + 1;
 
-              // 1v1 모드에서 각 플레이어 슬롯에 해당하는 픽 페이즈의 챔피언 가져오기
+              // 1v1 모드에서 각 플레이어 슬롯에 해당하는 픽 가져오기
               let championId = null;
               if (gameInfo.settings.playerType === "1v1") {
                 const phaseData = gameInfo.status.phaseData || [];
 
-                // 각 플레이어 슬롯별 픽 페이즈 매핑
+                // 각 플레이어 슬롯별 픽 페이즈 매핑 (블루팀이 왼쪽에 표시)
                 const pickPhases =
                   gameInfo.status.team1Side === "blue"
                     ? [7, 10, 11, 18, 19] // 블루팀 픽 페이즈들
@@ -895,6 +1062,18 @@ export default function DraftPhase({
                 const phaseIndex = pickPhases[i];
                 if (phaseIndex && phaseData[phaseIndex]) {
                   championId = phaseData[phaseIndex];
+                } else {
+                  // phaseData에서 찾지 못했다면 로컬 상태에서 찾기
+                  const pickKeys = [
+                    `pick1`,
+                    `pick2`,
+                    `pick3`,
+                    `pick4`,
+                    `pick5`,
+                  ];
+                  const isTeam1Blue = gameInfo.status.team1Side === "blue";
+                  const picks = isTeam1Blue ? bluePicks : redPicks;
+                  championId = picks[pickKeys[i]] || null;
                 }
               }
 
@@ -1038,6 +1217,46 @@ export default function DraftPhase({
                     const isDisabled = isChampionDisabled(champion.id);
                     const isSelected = selectedChampion === champion.id;
 
+                    // Disabled 이유 생성
+                    let disabledReason = "";
+                    if (isDisabled) {
+                      const currentBannedChampions = [
+                        ...blueBans,
+                        ...redBans,
+                      ].filter(Boolean);
+                      const currentPickedChampions = [
+                        ...Object.values(bluePicks),
+                        ...Object.values(redPicks),
+                      ].filter(Boolean);
+
+                      if (currentBannedChampions.includes(champion.id)) {
+                        disabledReason = "밴됨";
+                      } else if (currentPickedChampions.includes(champion.id)) {
+                        disabledReason = "이미 선택됨";
+                      } else if (
+                        gameInfo.settings.globalBans &&
+                        gameInfo.settings.globalBans.includes(champion.id)
+                      ) {
+                        disabledReason = "글로벌 밴";
+                      } else if (
+                        gameInfo.settings.draftType === "hardFearless"
+                      ) {
+                        const currentSet = gameInfo.status.setNumber || 1;
+                        if (currentSet > 1) {
+                          const previousSetPicks =
+                            gameInfo.status.previousSetPicks || {};
+                          for (let set = 1; set < currentSet; set++) {
+                            const setPicks =
+                              previousSetPicks[`set${set}`] || [];
+                            if (setPicks.includes(champion.id)) {
+                              disabledReason = `이전 세트에서 선택됨 (하드피어리스)`;
+                              break;
+                            }
+                          }
+                        }
+                      }
+                    }
+
                     return (
                       <div
                         key={champion.id}
@@ -1054,7 +1273,11 @@ export default function DraftPhase({
                         onClick={() =>
                           !isDisabled && handleChampionClick(champion.id)
                         }
-                        title={champion.name}
+                        title={
+                          isDisabled
+                            ? `${champion.name} - ${disabledReason}`
+                            : champion.name
+                        }
                       >
                         <Image
                           src={getChampionImageUrl(champion.id)}
@@ -1071,6 +1294,12 @@ export default function DraftPhase({
                         {isSelected && (
                           <div className="absolute inset-0 bg-yellow-400/20"></div>
                         )}
+                        {/* Disabled 상태일 때 작은 아이콘 표시 */}
+                        {isDisabled && (
+                          <div className="absolute top-1 right-1 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs">✕</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1086,12 +1315,12 @@ export default function DraftPhase({
             {Array.from({ length: 5 }, (_, i) => {
               const playerNum = i + 1;
 
-              // 1v1 모드에서 각 플레이어 슬롯에 해당하는 픽 페이즈의 챔피언 가져오기
+              // 1v1 모드에서 각 플레이어 슬롯에 해당하는 픽 가져오기
               let championId = null;
               if (gameInfo.settings.playerType === "1v1") {
                 const phaseData = gameInfo.status.phaseData || [];
 
-                // 각 플레이어 슬롯별 픽 페이즈 매핑
+                // 각 플레이어 슬롯별 픽 페이즈 매핑 (레드팀이 오른쪽에 표시)
                 const pickPhases =
                   gameInfo.status.team2Side === "red"
                     ? [8, 9, 12, 17, 20] // 레드팀 픽 페이즈들
@@ -1100,6 +1329,18 @@ export default function DraftPhase({
                 const phaseIndex = pickPhases[i];
                 if (phaseIndex && phaseData[phaseIndex]) {
                   championId = phaseData[phaseIndex];
+                } else {
+                  // phaseData에서 찾지 못했다면 로컬 상태에서 찾기
+                  const pickKeys = [
+                    `pick1`,
+                    `pick2`,
+                    `pick3`,
+                    `pick4`,
+                    `pick5`,
+                  ];
+                  const isTeam2Red = gameInfo.status.team2Side === "red";
+                  const picks = isTeam2Red ? redPicks : bluePicks;
+                  championId = picks[pickKeys[i]] || null;
                 }
               }
 
