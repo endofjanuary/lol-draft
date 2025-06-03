@@ -32,6 +32,7 @@ export interface GameInfo {
     playerType: string; // "single", "1v1"
     matchFormat: string; // "bo1", "bo3", "bo5"
     timeLimit: boolean;
+    gameName?: string; // 경기 이름 필드 추가
     globalBans?: string[];
     bannerImage?: string;
   };

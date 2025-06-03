@@ -626,6 +626,13 @@ export default function DraftPhase({
   // Store the current player's turn status
   const playersTurn = isPlayerTurn();
 
+  // 현재 플레이어의 팀과 진영 확인
+  const playerTeam = position.startsWith("team1") ? "team1" : "team2";
+  const playerSide =
+    playerTeam === "team1"
+      ? gameInfo.status.team1Side
+      : gameInfo.status.team2Side;
+
   const handleChampionClick = (championId: string) => {
     console.log(`=== 챔피언 클릭: ${championId} ===`);
     console.log("플레이어 턴:", playersTurn);
@@ -1008,9 +1015,9 @@ export default function DraftPhase({
   ]);
 
   return (
-    <div className="h-screen bg-[#030C28] text-white flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-[#1e2328] border-b border-gray-700 p-4 flex-shrink-0">
+      <div className="bg-gray-800 border-b border-gray-700 p-4 flex-shrink-0">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="text-xl font-bold text-blue-400">
             {gameInfo.status.team1Side === "blue"
@@ -1018,7 +1025,9 @@ export default function DraftPhase({
               : gameInfo.status.team2Name}
           </div>
           <div className="text-center">
-            <div className="text-lg font-semibold">이의반 내전 1경기 2세트</div>
+            <div className="text-lg font-semibold">
+              {gameInfo.settings?.gameName || "경기 이름 없음"}
+            </div>
             <div className="text-sm text-gray-400">
               Lobby #{gameInfo.game?.gameCode || "Unknown"}
             </div>
@@ -1059,7 +1068,7 @@ export default function DraftPhase({
       {/* Main Draft Area */}
       <div className="flex-1 flex max-w-7xl mx-auto w-full min-h-0">
         {/* Left Team (Blue Side) */}
-        <div className="w-80 bg-[#1e2328] border-r border-gray-700 p-4 flex-shrink-0 overflow-y-auto">
+        <div className="w-80 bg-gray-800 border-r border-gray-700 p-4 flex-shrink-0 overflow-y-auto">
           <div className="space-y-3">
             {Array.from({ length: 5 }, (_, i) => {
               const playerNum = i + 1;
@@ -1143,7 +1152,7 @@ export default function DraftPhase({
         </div>
 
         {/* Center Champion Selection */}
-        <div className="flex-1 bg-[#0f1419] p-6 flex flex-col min-h-0">
+        <div className="flex-1 bg-gray-800 p-6 flex flex-col min-h-0">
           {/* Current Phase Info */}
           <div className="text-center mb-4 flex-shrink-0">
             <h2 className="text-2xl font-bold mb-2">{getPhaseDescription()}</h2>
@@ -1152,7 +1161,7 @@ export default function DraftPhase({
             </div>
 
             {/* Current Turn */}
-            <div className="bg-gray-800/50 rounded-lg p-3 mb-4">
+            <div className="bg-gray-700 rounded-lg p-3 mb-4">
               {playersTurn ? (
                 <span className="text-green-400 font-semibold text-lg">
                   🎯 당신의 차례입니다 - {getCurrentAction()}
@@ -1177,7 +1186,9 @@ export default function DraftPhase({
                     ${
                       selectionSent
                         ? "bg-gray-600 cursor-not-allowed text-gray-300"
-                        : "bg-green-600 hover:bg-green-700 text-white shadow-lg"
+                        : playerSide === "blue"
+                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                        : "bg-red-600 hover:bg-red-700 text-white shadow-lg"
                     }
                   `}
                 >
@@ -1196,14 +1207,14 @@ export default function DraftPhase({
               placeholder="챔피언 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <select
               value={tagFilter || ""}
               onChange={(e) =>
                 setTagFilter((e.target.value as ChampionPosition) || null)
               }
-              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">모든 포지션</option>
               {championPositions.map((position) => (
@@ -1330,7 +1341,7 @@ export default function DraftPhase({
         </div>
 
         {/* Right Team (Red Side) */}
-        <div className="w-80 bg-[#1e2328] border-l border-gray-700 p-4 flex-shrink-0 overflow-y-auto">
+        <div className="w-80 bg-gray-800 border-l border-gray-700 p-4 flex-shrink-0 overflow-y-auto">
           <div className="space-y-3">
             {Array.from({ length: 5 }, (_, i) => {
               const playerNum = i + 1;
@@ -1415,9 +1426,9 @@ export default function DraftPhase({
       </div>
 
       {/* Bottom Banner */}
-      <div className="bg-[#1e2328] border-t border-gray-700 p-4 flex-shrink-0">
+      <div className="bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
         <div className="text-center text-gray-400">
-          <div className="bg-gray-800/50 rounded-lg p-3">광고 배너</div>
+          <div className="bg-gray-700 rounded-lg p-3">광고 배너</div>
         </div>
       </div>
     </div>
