@@ -175,7 +175,7 @@ export default function LobbyPhase({
       >
         <div className="flex justify-between items-center">
           <span className="font-medium">
-            {team1Name} ({team1Side === "blue" ? "블루" : "레드"} 진영)
+            {team1Side === "blue" ? "블루" : "레드"} 진영
             {isPlayerHost && <span className="text-yellow-400 ml-2">👑</span>}
           </span>
           {(team1Player?.isReady || (isCurrentPlayerTeam1 && isReady)) && (
@@ -240,7 +240,7 @@ export default function LobbyPhase({
       >
         <div className="flex justify-between items-center">
           <span className="font-medium">
-            {team2Name} ({team2Side === "blue" ? "블루" : "레드"} 진영)
+            {team2Side === "blue" ? "블루" : "레드"} 진영
             {isPlayerHost2 && <span className="text-yellow-400 ml-2">👑</span>}
           </span>
           {(team2Player?.isReady || (isCurrentPlayerTeam2 && isReady)) && (
@@ -278,11 +278,38 @@ export default function LobbyPhase({
     return slots;
   };
 
+  // 진영에 따른 팀 이름과 점수 매칭
+  const getTeamDisplayInfo = () => {
+    const team1Side = gameInfo.status?.team1Side || "blue";
+    const team2Side = gameInfo.status?.team2Side || "red";
+    const team1Name = gameInfo.status?.team1Name || "Team 1";
+    const team2Name = gameInfo.status?.team2Name || "Team 2";
+
+    // Team1이 블루 진영인 경우
+    if (team1Side === "blue") {
+      return {
+        blueTeamName: team1Name,
+        redTeamName: team2Name,
+        blueScore: gameInfo.team1Score || 0,
+        redScore: gameInfo.team2Score || 0,
+      };
+    } else {
+      // Team1이 레드 진영인 경우
+      return {
+        blueTeamName: team2Name,
+        redTeamName: team1Name,
+        blueScore: gameInfo.team2Score || 0,
+        redScore: gameInfo.team1Score || 0,
+      };
+    }
+  };
+
+  const teamDisplayInfo = getTeamDisplayInfo();
+
   return (
     <div className="container mx-auto p-4 py-8">
       <h1 className="text-2xl font-bold text-center mb-2">
-        {gameInfo.status.blueTeamName || "블루팀"} vs{" "}
-        {gameInfo.status.redTeamName || "레드팀"}
+        {teamDisplayInfo.blueTeamName} vs {teamDisplayInfo.redTeamName}
       </h1>
 
       <div className="flex justify-center items-center mb-6 gap-2">
@@ -335,20 +362,32 @@ export default function LobbyPhase({
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Blue Team Column */}
+        {/* Blue Side Column (always left) */}
         <div className="w-full md:w-1/2">
           <h2 className="text-xl font-bold text-blue-400 mb-4">
-            블루팀 <span className="text-white">{gameInfo.blueScore || 0}</span>
+            {teamDisplayInfo.blueTeamName}{" "}
+            <span className="text-white">{teamDisplayInfo.blueScore}</span>
           </h2>
-          <div>{renderTeamSlots().slice(0, 1)}</div>
+          <div>
+            {/* Team1이 블루 진영이면 team1 슬롯, 아니면 team2 슬롯 표시 */}
+            {gameInfo.status?.team1Side === "blue"
+              ? renderTeamSlots().slice(0, 1)
+              : renderTeamSlots().slice(1, 2)}
+          </div>
         </div>
 
-        {/* Red Team Column */}
+        {/* Red Side Column (always right) */}
         <div className="w-full md:w-1/2">
-          <h2 className="text-xl font-bold text-red-400 mb-4">
-            레드팀 <span className="text-white">{gameInfo.redScore || 0}</span>
+          <h2 className="text-xl font-bold text-red-400 mb-4 text-right">
+            {teamDisplayInfo.redTeamName}{" "}
+            <span className="text-white">{teamDisplayInfo.redScore}</span>
           </h2>
-          <div>{renderTeamSlots().slice(1)}</div>
+          <div>
+            {/* Team1이 레드 진영이면 team1 슬롯, 아니면 team2 슬롯 표시 */}
+            {gameInfo.status?.team1Side === "red"
+              ? renderTeamSlots().slice(0, 1)
+              : renderTeamSlots().slice(1, 2)}
+          </div>
         </div>
       </div>
 
