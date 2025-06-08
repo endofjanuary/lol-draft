@@ -1094,7 +1094,7 @@ export default function DraftPhase({
           {playersTurn && gameInfo.settings.timeLimit && (
             <div className="mt-2">
               <Timer
-                duration={60}
+                duration={30}
                 isActive={playersTurn}
                 onTimeout={() => {
                   console.log("Phase timeout! Auto-proceeding...");
