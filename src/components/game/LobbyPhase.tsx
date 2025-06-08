@@ -98,11 +98,28 @@ export default function LobbyPhase({
   // Check if player is on a team (not spectator)
   const isOnTeam = position !== "spectator";
 
+  // 첫 세트인지 확인하는 함수
+  const isFirstSet = () => {
+    // gameInfo에서 현재 세트 정보를 확인 (기본값은 1로 설정)
+    const currentSet = gameInfo.status?.setNumber || 1;
+    return currentSet === 1;
+  };
+
   // Handle position change with ready state reset
   const handlePositionChange = (newPosition: string) => {
     // 준비완료 상태인 경우 위치 변경 불가
     if (isReady) {
       // 알림 토스트나 메시지를 여기에 추가할 수 있습니다.
+      return;
+    }
+
+    // 첫 세트가 아니고 팀 간 이동하려는 경우 막기
+    if (
+      !isFirstSet() &&
+      (newPosition === "team1" || newPosition === "team2") &&
+      position !== "spectator"
+    ) {
+      // 첫 세트가 아니면 팀 간 이동 불가
       return;
     }
 
@@ -130,7 +147,8 @@ export default function LobbyPhase({
     const team1Player = players.find((p) => p.position === "team1");
     const isCurrentPlayerTeam1 = position === "team1";
     const isPlayerHost = team1Player?.isHost || false;
-    const canChangePosition = !isReady;
+    const canChangePosition =
+      !isReady && (isFirstSet() || position === "spectator");
 
     // 현재 Team 1이 어느 진영인지 확인
     const team1Side = gameInfo.status.team1Side || "blue";
@@ -147,7 +165,9 @@ export default function LobbyPhase({
             ? `bg-${team1Color}-800 border-2 border-green-400 shadow-md shadow-green-500/30`
             : `bg-${team1Color}-900 hover:bg-${team1Color}-800`
         } ${
-          !isCurrentPlayerTeam1 && canChangePosition
+          !isCurrentPlayerTeam1 &&
+          canChangePosition &&
+          (isFirstSet() || position === "spectator")
             ? "cursor-pointer"
             : "cursor-default"
         }`}
@@ -210,7 +230,9 @@ export default function LobbyPhase({
             ? `bg-${team2Color}-800 border-2 border-green-400 shadow-md shadow-green-500/30`
             : `bg-${team2Color}-900 hover:bg-${team2Color}-800`
         } ${
-          !isCurrentPlayerTeam2 && canChangePosition
+          !isCurrentPlayerTeam2 &&
+          canChangePosition &&
+          (isFirstSet() || position === "spectator")
             ? "cursor-pointer"
             : "cursor-default"
         }`}
@@ -361,15 +383,21 @@ export default function LobbyPhase({
           {position !== "spectator" && (
             <div
               className={`px-3 py-1 rounded ${
-                isReady
+                isReady || !isFirstSet()
                   ? "bg-gray-600 cursor-not-allowed"
                   : "bg-gray-700 hover:bg-purple-700 cursor-pointer"
               }`}
-              onClick={() => !isReady && onPositionChange("spectator")}
+              onClick={() =>
+                !isReady && isFirstSet() && onPositionChange("spectator")
+              }
             >
               {isReady ? (
                 <>
                   <span className="text-gray-400">준비 취소 후 관전 가능</span>
+                </>
+              ) : !isFirstSet() ? (
+                <>
+                  <span className="text-gray-400">첫 세트 이후 관전 불가</span>
                 </>
               ) : (
                 "관전하기"
