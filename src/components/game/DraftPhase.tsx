@@ -72,6 +72,34 @@ export default function DraftPhase({
   // Available champion positions for filtering
   const championPositions = getAllPositions();
 
+  // Player team logic - 플레이어 중심의 팀 배치
+  const playerTeam = position.startsWith("team1") ? "team1" : "team2";
+  const isSpectator = position === "spectator";
+
+  // 플레이어 기준 팀 정보 (관전자가 아닌 경우)
+  const myTeam = isSpectator ? "team1" : playerTeam; // 관전자는 기본값으로 team1 사용
+  const opponentTeam = isSpectator
+    ? "team2"
+    : playerTeam === "team1"
+    ? "team2"
+    : "team1";
+
+  // 팀별 진영 정보
+  const myTeamSide =
+    myTeam === "team1" ? gameInfo.status.team1Side : gameInfo.status.team2Side;
+  const opponentTeamSide =
+    opponentTeam === "team1"
+      ? gameInfo.status.team1Side
+      : gameInfo.status.team2Side;
+
+  // 팀별 이름 정보
+  const myTeamName =
+    myTeam === "team1" ? gameInfo.status.team1Name : gameInfo.status.team2Name;
+  const opponentTeamName =
+    opponentTeam === "team1"
+      ? gameInfo.status.team1Name
+      : gameInfo.status.team2Name;
+
   // Filter champions based on search term and position filter
   const filteredChampions = useMemo(() => {
     return champions.filter((champion) => {
@@ -462,16 +490,17 @@ export default function DraftPhase({
         return;
       }
 
-      // 현재 페이즈의 선택된 챔피언을 업데이트
-      setCurrentPhaseSelectedChampion(data.champion);
-
       // 내가 선택한 챔피언인 경우
       if (data.nickname === nickname) {
         setSelectedChampion(data.champion);
       }
 
-      // 확정된 경우 (다른 플레이어의 선택이 확정되었을 때)
-      if (data.isConfirmed) {
+      // 확정되지 않은 선택인 경우 - 선택 중인 상태로 표시
+      if (!data.isConfirmed) {
+        setCurrentPhaseSelectedChampion(data.champion);
+      } else {
+        // 확정된 경우 - 선택 중인 상태 초기화 및 실제 데이터 업데이트
+        setCurrentPhaseSelectedChampion(null);
         // 선택된 챔피언을 현재 페이즈의 데이터에 미리 추가
         // 서버에서 phase_progressed 이벤트가 도착하기 전에 UI에 반영
         const currentPhase = gameInfo.status.phase;
@@ -544,8 +573,7 @@ export default function DraftPhase({
           }
         }
 
-        // UI 깜빡임 방지를 위해 선택 챔피언 초기화를 지연시키지 않고 즉시 초기화
-        setCurrentPhaseSelectedChampion(null);
+        // 내가 확정한 경우 선택 상태 초기화
         if (data.nickname === nickname) {
           setSelectedChampion(null);
           setSelectionSent(false);
@@ -572,7 +600,6 @@ export default function DraftPhase({
   const isPlayerTurn = () => {
     const phase = gameInfo.status.phase;
     const playerType = gameInfo.settings.playerType;
-    const playerTeam = position.startsWith("team1") ? "team1" : "team2";
 
     // Spectator can never take actions
     if (position === "spectator") return false;
@@ -625,13 +652,6 @@ export default function DraftPhase({
 
   // Store the current player's turn status
   const playersTurn = isPlayerTurn();
-
-  // 현재 플레이어의 팀과 진영 확인
-  const playerTeam = position.startsWith("team1") ? "team1" : "team2";
-  const playerSide =
-    playerTeam === "team1"
-      ? gameInfo.status.team1Side
-      : gameInfo.status.team2Side;
 
   const handleChampionClick = (championId: string) => {
     console.log(`=== 챔피언 클릭: ${championId} ===`);
@@ -920,23 +940,22 @@ export default function DraftPhase({
   };
 
   const renderBanSlot = (team: string, index: number) => {
-    const bans = team === "team1" ? blueBans : redBans;
+    // 팀 기준으로 밴 데이터 가져오기 (진영이 바뀌어도 올바른 팀 데이터 사용)
+    const teamSide = team === myTeam ? myTeamSide : opponentTeamSide;
+    const bans = teamSide === "blue" ? blueBans : redBans;
     const championId = bans[index];
     const currentPhase = gameInfo.status.phase;
 
-    // 밴 페이즈 계산 수정
+    // 밴 페이즈 계산 수정 - 진영 기반으로 계산
     let banPhase;
     if (index < 3) {
-      // 첫 번째 밴 페이즈 (1-6)
-      banPhase = team === "team1" ? index * 2 + 1 : index * 2 + 2;
+      // 첫 번째 밴 페이즈 (1-6): blue→red→blue→red→blue→red
+      banPhase = teamSide === "blue" ? index * 2 + 1 : index * 2 + 2;
     } else {
-      // 두 번째 밴 페이즈 (13-16)
+      // 두 번째 밴 페이즈 (13-16): red→blue→red→blue
       const secondBanIndex = index - 3;
-      if (team === "team2") {
-        banPhase = 13 + secondBanIndex * 2;
-      } else {
-        banPhase = 14 + secondBanIndex * 2;
-      }
+      banPhase =
+        teamSide === "red" ? 13 + secondBanIndex * 2 : 14 + secondBanIndex * 2;
     }
 
     // 현재 페이즈가 정확히 이 슬롯의 밴 페이즈와 일치하는지 확인
@@ -1064,9 +1083,9 @@ export default function DraftPhase({
             {playersTurn
               ? `당신의 차례입니다 - ${getCurrentAction()}`
               : `${
-                  currentTurnPosition === "team1"
-                    ? gameInfo.status.team1Name
-                    : gameInfo.status.team2Name
+                  currentTurnPosition === myTeam
+                    ? myTeamName || "내 팀"
+                    : opponentTeamName || "상대팀"
                 }의 차례`}
           </p>
           <p className="text-sm mt-1">진행 단계: {gameInfo.status.phase}/20</p>
@@ -1093,24 +1112,20 @@ export default function DraftPhase({
         </div>
 
         <div className="flex flex-col md:flex-row gap-4">
-          {/* Left Team (Blue Side) */}
+          {/* Left Team (Player's Team) */}
           <div
             className={`w-full md:w-1/4 ${
-              gameInfo.status.team1Side === "blue"
-                ? "bg-blue-900"
-                : "bg-red-900"
+              myTeamSide === "blue" ? "bg-blue-900" : "bg-red-900"
             } ${
-              currentTurnPosition === "team1"
+              currentTurnPosition === myTeam
                 ? "bg-opacity-40 ring-2 ring-blue-400"
                 : "bg-opacity-20"
             } rounded-lg p-4 relative transition-all duration-300`}
           >
-            {currentTurnPosition === "team1" && (
+            {currentTurnPosition === myTeam && (
               <div
                 className={`absolute -top-2 left-1/2 transform -translate-x-1/2 ${
-                  gameInfo.status.team1Side === "blue"
-                    ? "bg-blue-500"
-                    : "bg-red-500"
+                  myTeamSide === "blue" ? "bg-blue-500" : "bg-red-500"
                 } text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg`}
               >
                 {getCurrentAction() === "BAN" ? "밴 선택 중" : "픽 선택 중"}
@@ -1119,13 +1134,12 @@ export default function DraftPhase({
             <div className="flex justify-between items-center mb-4">
               <h3
                 className={`text-xl font-bold ${
-                  gameInfo.status.team1Side === "blue"
-                    ? "text-blue-400"
-                    : "text-red-400"
+                  myTeamSide === "blue" ? "text-blue-400" : "text-red-400"
                 }`}
               >
-                {gameInfo.status.team1Name ||
-                  (gameInfo.status.team1Side === "blue" ? "블루팀" : "레드팀")}
+                {isSpectator
+                  ? myTeamName || (myTeamSide === "blue" ? "블루팀" : "레드팀")
+                  : myTeamName || "내 팀"}
               </h3>
             </div>
 
@@ -1134,7 +1148,7 @@ export default function DraftPhase({
               <h4 className="text-sm text-gray-400 mb-2">금지 챔피언</h4>
               <div className="flex flex-wrap gap-1">
                 {Array.from({ length: 5 }, (_, i) => (
-                  <div key={`team1-ban-${i}`}>{renderBanSlot("team1", i)}</div>
+                  <div key={`my-team-ban-${i}`}>{renderBanSlot(myTeam, i)}</div>
                 ))}
               </div>
             </div>
@@ -1151,17 +1165,17 @@ export default function DraftPhase({
                   if (gameInfo.settings.playerType === "1v1") {
                     const phaseData = gameInfo.status.phaseData || [];
 
-                    // 각 플레이어 슬롯별 픽 페이즈 매핑 (team1이 왼쪽에 표시)
-                    const pickPhases =
-                      gameInfo.status.team1Side === "blue"
+                    // 내 팀의 픽 페이즈들 가져오기 (팀 기준)
+                    const myTeamPickPhases =
+                      myTeamSide === "blue"
                         ? [7, 10, 11, 18, 19] // 블루팀 픽 페이즈들
                         : [8, 9, 12, 17, 20]; // 레드팀 픽 페이즈들
 
-                    const phaseIndex = pickPhases[i];
+                    const phaseIndex = myTeamPickPhases[i];
                     if (phaseIndex && phaseData[phaseIndex]) {
                       championId = phaseData[phaseIndex];
                     } else {
-                      // phaseData에서 찾지 못했다면 로컬 상태에서 찾기
+                      // phaseData에서 찾지 못했다면 로컬 상태에서 찾기 (팀 기준으로)
                       const pickKeys = [
                         `pick1`,
                         `pick2`,
@@ -1169,15 +1183,16 @@ export default function DraftPhase({
                         `pick4`,
                         `pick5`,
                       ];
-                      const isTeam1Blue = gameInfo.status.team1Side === "blue";
-                      const picks = isTeam1Blue ? bluePicks : redPicks;
+                      // 내 팀 기준으로 픽 데이터 가져오기
+                      const picks =
+                        myTeamSide === "blue" ? bluePicks : redPicks;
                       championId = picks[pickKeys[i]] || null;
                     }
                   }
 
                   return (
                     <div
-                      key={`team1-player-${i}`}
+                      key={`my-team-player-${i}`}
                       className="flex items-center gap-3"
                     >
                       <div className="w-12 h-12 bg-gray-800 rounded-md overflow-hidden border border-gray-600 flex-shrink-0">
@@ -1333,11 +1348,7 @@ export default function DraftPhase({
                         px-4 py-2 rounded-md font-bold
                         ${
                           selectedChampion && !selectionSent
-                            ? currentTurnPosition === "team1"
-                              ? gameInfo.status.team1Side === "blue"
-                                ? "bg-blue-600 hover:bg-blue-700"
-                                : "bg-red-600 hover:bg-red-700"
-                              : gameInfo.status.team2Side === "blue"
+                            ? myTeamSide === "blue"
                               ? "bg-blue-600 hover:bg-blue-700"
                               : "bg-red-600 hover:bg-red-700"
                             : "bg-gray-600 cursor-not-allowed opacity-50"
@@ -1356,22 +1367,20 @@ export default function DraftPhase({
             )}
           </div>
 
-          {/* Right Team (Red Side) */}
+          {/* Right Team (Opponent's Team) */}
           <div
             className={`w-full md:w-1/4 ${
-              gameInfo.status.team2Side === "red" ? "bg-red-900" : "bg-blue-900"
+              opponentTeamSide === "red" ? "bg-red-900" : "bg-blue-900"
             } ${
-              currentTurnPosition === "team2"
+              currentTurnPosition === opponentTeam
                 ? "bg-opacity-40 ring-2 ring-red-400"
                 : "bg-opacity-20"
             } rounded-lg p-4 relative transition-all duration-300`}
           >
-            {currentTurnPosition === "team2" && (
+            {currentTurnPosition === opponentTeam && (
               <div
                 className={`absolute -top-2 left-1/2 transform -translate-x-1/2 ${
-                  gameInfo.status.team2Side === "red"
-                    ? "bg-red-500"
-                    : "bg-blue-500"
+                  opponentTeamSide === "red" ? "bg-red-500" : "bg-blue-500"
                 } text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg`}
               >
                 {getCurrentAction() === "BAN" ? "밴 선택 중" : "픽 선택 중"}
@@ -1380,13 +1389,13 @@ export default function DraftPhase({
             <div className="flex justify-between items-center mb-4">
               <h3
                 className={`text-xl font-bold ${
-                  gameInfo.status.team2Side === "red"
-                    ? "text-red-400"
-                    : "text-blue-400"
+                  opponentTeamSide === "red" ? "text-red-400" : "text-blue-400"
                 }`}
               >
-                {gameInfo.status.team2Name ||
-                  (gameInfo.status.team2Side === "red" ? "레드팀" : "블루팀")}
+                {isSpectator
+                  ? opponentTeamName ||
+                    (opponentTeamSide === "red" ? "레드팀" : "블루팀")
+                  : opponentTeamName || "상대팀"}
               </h3>
             </div>
 
@@ -1395,7 +1404,9 @@ export default function DraftPhase({
               <h4 className="text-sm text-gray-400 mb-2">금지 챔피언</h4>
               <div className="flex flex-wrap gap-1">
                 {Array.from({ length: 5 }, (_, i) => (
-                  <div key={`team2-ban-${i}`}>{renderBanSlot("team2", i)}</div>
+                  <div key={`opponent-team-ban-${i}`}>
+                    {renderBanSlot(opponentTeam, i)}
+                  </div>
                 ))}
               </div>
             </div>
@@ -1412,17 +1423,17 @@ export default function DraftPhase({
                   if (gameInfo.settings.playerType === "1v1") {
                     const phaseData = gameInfo.status.phaseData || [];
 
-                    // 각 플레이어 슬롯별 픽 페이즈 매핑 (team2가 오른쪽에 표시)
-                    const pickPhases =
-                      gameInfo.status.team2Side === "red"
+                    // 상대팀의 픽 페이즈들 가져오기 (팀 기준)
+                    const opponentTeamPickPhases =
+                      opponentTeamSide === "red"
                         ? [8, 9, 12, 17, 20] // 레드팀 픽 페이즈들
                         : [7, 10, 11, 18, 19]; // 블루팀 픽 페이즈들
 
-                    const phaseIndex = pickPhases[i];
+                    const phaseIndex = opponentTeamPickPhases[i];
                     if (phaseIndex && phaseData[phaseIndex]) {
                       championId = phaseData[phaseIndex];
                     } else {
-                      // phaseData에서 찾지 못했다면 로컬 상태에서 찾기
+                      // phaseData에서 찾지 못했다면 로컬 상태에서 찾기 (팀 기준으로)
                       const pickKeys = [
                         `pick1`,
                         `pick2`,
@@ -1430,15 +1441,16 @@ export default function DraftPhase({
                         `pick4`,
                         `pick5`,
                       ];
-                      const isTeam2Red = gameInfo.status.team2Side === "red";
-                      const picks = isTeam2Red ? redPicks : bluePicks;
+                      // 상대팀 기준으로 픽 데이터 가져오기
+                      const picks =
+                        opponentTeamSide === "blue" ? bluePicks : redPicks;
                       championId = picks[pickKeys[i]] || null;
                     }
                   }
 
                   return (
                     <div
-                      key={`team2-player-${i}`}
+                      key={`opponent-team-player-${i}`}
                       className="flex items-center gap-3"
                     >
                       <div className="w-12 h-12 bg-gray-800 rounded-md overflow-hidden border border-gray-600 flex-shrink-0">
