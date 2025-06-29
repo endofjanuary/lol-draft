@@ -325,10 +325,13 @@ export default function ResultPhase({
             <button
               onClick={() => handleSelectWinner("blue")}
               disabled={!isHost}
-              className={`px-6 py-3 rounded-md font-bold transition-colors
+              className={`px-6 py-3 rounded-md font-bold transition-colors border-2
                 ${isHost ? "cursor-pointer" : "cursor-not-allowed opacity-50"}
-                ${selectedWinner === "blue" ? "bg-blue-600" : "bg-blue-900"}
-                ${isHost && "hover:bg-blue-700"}`}
+                ${
+                  selectedWinner === "blue"
+                    ? "bg-blue-600 hover:bg-blue-700 border-yellow-400 text-white"
+                    : "bg-gray-600 hover:bg-gray-700 border-gray-500 text-gray-300"
+                }`}
             >
               블루팀 승리
             </button>
@@ -336,11 +339,11 @@ export default function ResultPhase({
             <button
               onClick={handleConfirmAndProceed}
               disabled={!isHost || !selectedWinner}
-              className={`px-6 py-3 rounded-md font-bold transition-colors
+              className={`px-6 py-3 rounded-md font-bold transition-colors border-2
                 ${
                   isHost && selectedWinner
-                    ? "cursor-pointer bg-gray-600 hover:bg-gray-700"
-                    : "cursor-not-allowed opacity-50 bg-gray-600"
+                    ? "cursor-pointer bg-green-600 hover:bg-green-700 border-green-400 text-white"
+                    : "cursor-not-allowed opacity-50 bg-gray-600 border-gray-500 text-gray-300"
                 }`}
             >
               결과 확정
@@ -349,10 +352,13 @@ export default function ResultPhase({
             <button
               onClick={() => handleSelectWinner("red")}
               disabled={!isHost}
-              className={`px-6 py-3 rounded-md font-bold transition-colors
+              className={`px-6 py-3 rounded-md font-bold transition-colors border-2
                 ${isHost ? "cursor-pointer" : "cursor-not-allowed opacity-50"}
-                ${selectedWinner === "red" ? "bg-red-600" : "bg-red-900"}
-                ${isHost && "hover:bg-red-700"}`}
+                ${
+                  selectedWinner === "red"
+                    ? "bg-red-600 hover:bg-red-700 border-yellow-400 text-white"
+                    : "bg-gray-600 hover:bg-gray-700 border-gray-500 text-gray-300"
+                }`}
             >
               레드팀 승리
             </button>
