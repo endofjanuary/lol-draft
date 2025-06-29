@@ -171,6 +171,7 @@ export default function GamePage() {
             timeLimit: true,
             globalBans: [],
             bannerImage: undefined,
+            gameName: "새로운 게임",
           },
           status: {
             phase: 0,
