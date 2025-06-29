@@ -370,13 +370,26 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
       results.push(...gameInfo.results);
     }
     // 현재 진행 중인 세트가 완성된 경우(phaseData[21]에 승자 정보가 있으면), 마지막 세트로 추가
+    // 단, 이미 results에 포함되지 않은 경우에만 추가 (중복 방지)
     if (
       Array.isArray(gameInfo.status.phaseData) &&
       gameInfo.status.phaseData.length >= 22 &&
       gameInfo.status.phaseData[21] &&
       gameInfo.status.phaseData[21].trim() !== ""
     ) {
-      results.push(gameInfo.status.phaseData);
+      // 중복 체크: 마지막 세트가 이미 results에 포함되어 있는지 확인
+      const isAlreadyIncluded = results.some((result, index) => {
+        // 같은 인덱스의 세트가 동일한 승자를 가지고 있는지 확인
+        return (
+          result.length >= 22 &&
+          result[21] === gameInfo.status.phaseData[21] &&
+          index === results.length - 1
+        ); // 마지막 세트인지 확인
+      });
+
+      if (!isAlreadyIncluded) {
+        results.push(gameInfo.status.phaseData);
+      }
     }
     return results;
   };
