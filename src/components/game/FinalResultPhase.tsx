@@ -49,17 +49,13 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
     return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${championId}.png`;
   };
 
-  // 팀 이름 및 점수 가져오기 (특정 세트 기준)
-  const getTeamInfoForSet = (setNumber: number) => {
-    // 각 세트별로 팀 진영이 바뀔 수 있으므로 현재 게임 상태 기준으로 계산
-    const team1Score = gameInfo.team1Score || 0;
-    const team2Score = gameInfo.team2Score || 0;
-
+  // 팀 정보 가져오기 (팀 기준)
+  const getTeamInfo = () => {
     return {
       team1Name: gameInfo.status.team1Name,
       team2Name: gameInfo.status.team2Name,
-      team1Score,
-      team2Score,
+      team1Score: gameInfo.team1Score || 0,
+      team2Score: gameInfo.team2Score || 0,
     };
   };
 
@@ -187,29 +183,23 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
     );
   };
 
-  // 세트별 누적 점수 계산 함수
-  const getScoreUpToSet = (setNumber: number) => {
-    let blueScore = 0;
-    let redScore = 0;
-    const results = getAllSetResults();
-    for (let i = 0; i < setNumber; i++) {
-      const set = results[i];
-      if (!set || set.length < 22) continue;
-      const winner = set[21];
-      // 해당 세트의 진영 정보
-      const sides = getSidesForSet(i + 1);
-      if (winner === "blue") {
-        if (sides.team1Side === "blue") blueScore++;
-        else redScore++;
-      } else if (winner === "red") {
-        if (sides.team1Side === "red") blueScore++;
-        else redScore++;
-      }
-    }
-    return { blueScore, redScore };
+  // 세트별 누적 점수 계산 함수 (단순화)
+  const getScoreUpToSet = (
+    setNumber: number,
+    sides: { team1Side: string; team2Side: string }
+  ) => {
+    // 해당 세트의 진영에 따라 점수 매핑
+    const teamInfo = getTeamInfo();
+
+    return {
+      blueScore:
+        sides.team1Side === "blue" ? teamInfo.team1Score : teamInfo.team2Score,
+      redScore:
+        sides.team1Side === "red" ? teamInfo.team1Score : teamInfo.team2Score,
+    };
   };
 
-  // 세트별 결과 렌더링
+  // 세트별 결과 렌더링 (정확한 진영 계산)
   const renderSetResult = (
     setNumber: number,
     phaseData: string[],
@@ -217,21 +207,16 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
   ) => {
     const { blueBans, redBans, bluePicks, redPicks } =
       extractSetData(phaseData);
-    // 진영 정보 계산
-    const sides = getSidesForSet(setNumber);
-    // 진영에 따라 팀명/점수 매핑
-    const blueTeamName =
-      sides.team1Side === "blue"
-        ? gameInfo.status.team1Name
-        : gameInfo.status.team2Name;
-    const redTeamName =
-      sides.team1Side === "red"
-        ? gameInfo.status.team1Name
-        : gameInfo.status.team2Name;
-    // 누적 점수 계산
-    const score = getScoreUpToSet(setNumber);
 
-    // 승자 정보를 팀명으로 변환
+    // 해당 세트의 정확한 진영 정보 계산
+    const sides = getSidesForSet(setNumber);
+    const blueTeamName =
+      sides.team1Side === "blue" ? teamInfo.team1Name : teamInfo.team2Name;
+    const redTeamName =
+      sides.team1Side === "red" ? teamInfo.team1Name : teamInfo.team2Name;
+    const score = getScoreUpToSet(setNumber, sides);
+
+    // 승자 정보를 팀명으로 변환 (해당 세트의 진영 기준)
     const getWinnerText = () => {
       if (winner === "blue") {
         return `${blueTeamName} 승리`;
@@ -344,21 +329,26 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
     );
   };
 
-  // 세트별 진영 정보를 계산하는 함수 (예시: 홀수 세트는 기본, 짝수 세트는 스왑)
+  // 세트별 진영 정보를 정확히 계산하는 함수 (역방향 계산)
   const getSidesForSet = (setNumber: number) => {
-    // 첫 세트 기준 진영
-    const initialTeam1Side = gameInfo.status.team1Side;
-    const initialTeam2Side = gameInfo.status.team2Side;
-    // 홀수 세트: 그대로, 짝수 세트: 스왑
-    if (setNumber % 2 === 1) {
+    // 현재 세트 번호 계산 (총 완료된 세트 수)
+    const currentSetNumber = gameResults.length;
+    const currentTeam1Side = gameInfo.status.team1Side;
+    const currentTeam2Side = gameInfo.status.team2Side;
+
+    // 현재 세트에서 목표 세트까지의 차이 계산
+    const setDifference = currentSetNumber - setNumber;
+
+    // 세트 차이가 짝수면 진영 동일, 홀수면 진영 반대
+    if (setDifference % 2 === 0) {
       return {
-        team1Side: initialTeam1Side,
-        team2Side: initialTeam2Side,
+        team1Side: currentTeam1Side,
+        team2Side: currentTeam2Side,
       };
     } else {
       return {
-        team1Side: initialTeam1Side === "blue" ? "red" : "blue",
-        team2Side: initialTeam2Side === "blue" ? "red" : "blue",
+        team1Side: currentTeam1Side === "blue" ? "red" : "blue",
+        team2Side: currentTeam2Side === "blue" ? "red" : "blue",
       };
     }
   };
@@ -396,7 +386,7 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
 
   // 게임 결과 데이터 가져오기
   const gameResults = getAllSetResults();
-  const teamInfo = getTeamInfoForSet(1);
+  const teamInfo = getTeamInfo();
 
   // 디버깅을 위한 콘솔 출력
   useEffect(() => {
