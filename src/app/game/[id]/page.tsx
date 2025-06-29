@@ -8,6 +8,7 @@ import LobbyPhase from "@/components/game/LobbyPhase";
 import DraftPhase from "@/components/game/DraftPhase";
 import ResultPhase from "@/components/game/ResultPhase";
 import SideChoicePhase from "@/components/game/SideChoicePhase";
+import FinalResultPhase from "@/components/game/FinalResultPhase";
 import { GameInfo, Player } from "@/types/game";
 import { getApiBaseUrl, getSocketUrl } from "@/utils/apiConfig";
 import {
@@ -441,8 +442,14 @@ export default function GamePage() {
       console.log("Match finished:", data);
       setShowSideChoice(false);
       setLosingSide(null);
-      // 게임 정보 새로고침
-      fetchGameInfo();
+
+      // 게임 정보 새로고침 후 최종 결과 페이지로 자동 이동
+      fetchGameInfo().then(() => {
+        // 잠시 후 최종 결과 페이지로 이동 (서버 데이터 반영 시간 확보)
+        setTimeout(() => {
+          window.location.href = `/game/${id}/final-result`;
+        }, 1000);
+      });
     });
 
     socketInstance.on("client_joined", (data) => {
@@ -818,6 +825,116 @@ export default function GamePage() {
     });
   };
 
+  // 경기 완료 여부를 확인하는 함수
+  const isMatchCompleted = () => {
+    if (!gameInfo) return false;
+
+    const matchFormat = gameInfo.settings.matchFormat || "bo1";
+    const team1Score = gameInfo.team1Score || 0;
+    const team2Score = gameInfo.team2Score || 0;
+
+    console.log("경기 완료 체크:", { matchFormat, team1Score, team2Score });
+
+    // 단판제: 어느 팀이든 1점을 얻으면 완료
+    if (matchFormat === "bo1") {
+      return team1Score >= 1 || team2Score >= 1;
+    }
+
+    // 3판 2선승제: 어느 팀이든 2점을 얻으면 완료
+    if (matchFormat === "bo3") {
+      return team1Score >= 2 || team2Score >= 2;
+    }
+
+    // 5판 3선승제: 어느 팀이든 3점을 얻으면 완료
+    if (matchFormat === "bo5") {
+      return team1Score >= 3 || team2Score >= 3;
+    }
+
+    return false;
+  };
+
+  // 개발용 더미 데이터 생성 함수
+  const createTestGameData = (
+    scenario: "bo3_completed" | "bo1_completed"
+  ): GameInfo => {
+    const baseData: GameInfo = {
+      code: "TEST123",
+      game: { gameCode: "TEST123", createdAt: Date.now() },
+      settings: {
+        version: "14.1.1",
+        draftType: "tournament",
+        playerType: "1v1",
+        matchFormat: scenario === "bo3_completed" ? "bo3" : "bo1",
+        timeLimit: true,
+        gameName: "테스트 경기",
+        bannerImage: "",
+        globalBans: [],
+      },
+      status: {
+        phase: 21,
+        team1Name: "T1",
+        team2Name: "GEN",
+        team1Side: "blue" as const,
+        team2Side: "red" as const,
+        lastUpdatedAt: Date.now(),
+        phaseData: Array(22).fill("") as string[],
+        setNumber: scenario === "bo3_completed" ? 3 : 1,
+        blueTeamName: "T1", // 하위 호환성
+        redTeamName: "GEN", // 하위 호환성
+      },
+      clients: [],
+      team1Score: 0,
+      team2Score: 0,
+      results: [],
+      blueScore: 0, // 하위 호환성
+      redScore: 0, // 하위 호환성
+    };
+
+    if (scenario === "bo3_completed") {
+      // BO3 2-1 승부 (T1이 2승)
+      return {
+        ...baseData,
+        team1Score: 2,
+        team2Score: 1,
+        blueScore: 2, // 하위 호환성
+        redScore: 1, // 하위 호환성
+        results: [
+          // 1세트 데이터 (T1 승리)
+          Array(22)
+            .fill("")
+            .map((_, i) => (i === 21 ? "blue" : "")) as string[],
+          // 2세트 데이터 (GEN 승리)
+          Array(22)
+            .fill("")
+            .map((_, i) => (i === 21 ? "red" : "")) as string[],
+          // 3세트 데이터는 현재 phaseData에 있음 (T1 승리)
+        ],
+        status: {
+          ...baseData.status,
+          phaseData: Array(22)
+            .fill("")
+            .map((_, i) => (i === 21 ? "blue" : "")) as string[],
+        },
+      };
+    } else {
+      // BO1 승부 (T1 승리)
+      return {
+        ...baseData,
+        team1Score: 1,
+        team2Score: 0,
+        blueScore: 1, // 하위 호환성
+        redScore: 0, // 하위 호환성
+        results: [],
+        status: {
+          ...baseData.status,
+          phaseData: Array(22)
+            .fill("")
+            .map((_, i) => (i === 21 ? "blue" : "")) as string[],
+        },
+      };
+    }
+  };
+
   // Show loading state if not connected
   if (!isConnected) {
     console.log("Not connected, showing connection loading state");
@@ -857,15 +974,41 @@ export default function GamePage() {
             <p className="text-gray-400 mb-4">
               게임 정보를 불러오는 중입니다...
             </p>
-            <button
-              onClick={() => {
-                console.log("Manual fetch game info button clicked");
-                fetchGameInfo();
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md"
-            >
-              게임 정보 다시 불러오기
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  console.log("Manual fetch game info button clicked");
+                  fetchGameInfo();
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md"
+              >
+                게임 정보 다시 불러오기
+              </button>
+
+              {/* 개발환경에서만 테스트 버튼 표시 */}
+              {process.env.NODE_ENV === "development" && (
+                <>
+                  <button
+                    onClick={() => {
+                      console.log("BO3 완료 테스트 데이터 로드");
+                      setGameInfo(createTestGameData("bo3_completed"));
+                    }}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md"
+                  >
+                    BO3 완료 테스트 (2-1)
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log("BO1 완료 테스트 데이터 로드");
+                      setGameInfo(createTestGameData("bo1_completed"));
+                    }}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md"
+                  >
+                    BO1 완료 테스트
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -881,6 +1024,12 @@ export default function GamePage() {
           </p>
         </div>
       );
+    }
+
+    // 경기가 완료되었으면 최종 결과 페이지 자동 표시
+    if (isMatchCompleted()) {
+      console.log("경기 완료됨 - 최종 결과 페이지 표시");
+      return <FinalResultPhase gameInfo={gameInfo} />;
     }
 
     // 진영 선택 페이즈 표시

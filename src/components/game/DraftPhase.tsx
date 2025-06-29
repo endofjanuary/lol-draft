@@ -38,6 +38,7 @@ export default function DraftPhase({
   onConfirmSelection,
   socket,
 }: DraftPhaseProps) {
+  // 모든 useState, useEffect 등 훅 선언을 최상단에 위치시킴
   const [selectedChampion, setSelectedChampion] = useState<string | null>(null);
   const [currentPhaseSelectedChampion, setCurrentPhaseSelectedChampion] =
     useState<string | null>(null);
@@ -46,59 +47,49 @@ export default function DraftPhase({
     [key: string]: string;
   }>({});
   const [selectionSent, setSelectionSent] = useState(false);
-
-  // New state for storing champion data from Riot API
   const [champions, setChampions] = useState<ChampionData[]>([]);
   const [isLoadingChampions, setIsLoadingChampions] = useState(false);
   const [championError, setChampionError] = useState<string | null>(null);
-
-  // States for selected champions
   const [blueBans, setBlueBans] = useState<string[]>([]);
   const [redBans, setRedBans] = useState<string[]>([]);
   const [bluePicks, setBluePicks] = useState<{ [key: string]: string }>({});
   const [redPicks, setRedPicks] = useState<{ [key: string]: string }>({});
-
   const [currentTurnPosition, setCurrentTurnPosition] =
     useState<string>("team1");
-
-  // Add new state for random champion selection
   const [availableChampions, setAvailableChampions] = useState<ChampionData[]>(
     []
   );
-
   const [searchTerm, setSearchTerm] = useState("");
   const [tagFilter, setTagFilter] = useState<ChampionPosition | null>(null);
-
-  // Available champion positions for filtering
   const championPositions = getAllPositions();
-
-  // Player team logic - 플레이어 중심의 팀 배치
   const playerTeam = position.startsWith("team1") ? "team1" : "team2";
   const isSpectator = position === "spectator";
-
-  // 플레이어 기준 팀 정보 (관전자가 아닌 경우)
-  const myTeam = isSpectator ? "team1" : playerTeam; // 관전자는 기본값으로 team1 사용
+  const myTeam = isSpectator ? "team1" : playerTeam;
   const opponentTeam = isSpectator
     ? "team2"
     : playerTeam === "team1"
     ? "team2"
     : "team1";
-
-  // 팀별 진영 정보
   const myTeamSide =
     myTeam === "team1" ? gameInfo.status.team1Side : gameInfo.status.team2Side;
   const opponentTeamSide =
     opponentTeam === "team1"
       ? gameInfo.status.team1Side
       : gameInfo.status.team2Side;
-
-  // 팀별 이름 정보
   const myTeamName =
     myTeam === "team1" ? gameInfo.status.team1Name : gameInfo.status.team2Name;
   const opponentTeamName =
     opponentTeam === "team1"
       ? gameInfo.status.team1Name
       : gameInfo.status.team2Name;
+  // 자동 확정 대기 상태
+  const [autoConfirmPending, setAutoConfirmPending] = useState(false);
+  useEffect(() => {
+    if (autoConfirmPending && selectedChampion) {
+      handleConfirmSelection();
+      setAutoConfirmPending(false);
+    }
+  }, [selectedChampion, autoConfirmPending]);
 
   // Filter champions based on search term and position filter
   const filteredChampions = useMemo(() => {
@@ -1097,12 +1088,21 @@ export default function DraftPhase({
                 duration={30}
                 isActive={playersTurn}
                 onTimeout={() => {
-                  console.log("Phase timeout! Auto-proceeding...");
-                  if (socket) {
-                    socket.emit("phase_timeout", {
-                      phase: gameInfo.status.phase,
-                      nickname: nickname,
-                    });
+                  if (!playersTurn) return;
+                  if (selectedChampion) {
+                    handleConfirmSelection();
+                  } else {
+                    const pickable = filteredChampions.filter(
+                      (champ) => !isChampionDisabled(champ.id)
+                    );
+                    if (pickable.length > 0) {
+                      const randomIdx = Math.floor(
+                        Math.random() * pickable.length
+                      );
+                      const randomChampion = pickable[randomIdx];
+                      handleChampionClick(randomChampion.id);
+                      setAutoConfirmPending(true); // 확정 대기 상태로 변경
+                    }
                   }
                 }}
                 resetKey={`phase-${gameInfo.status.phase}`}

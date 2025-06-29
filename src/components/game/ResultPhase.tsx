@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { GameInfo, ChampionData } from "@/types/game";
-import { useRouter } from "next/navigation";
 
 interface ResultPhaseProps {
   gameInfo: GameInfo;
@@ -16,7 +15,6 @@ export default function ResultPhase({
   onNextGame,
   isHost,
 }: ResultPhaseProps) {
-  const router = useRouter();
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
   const [champions, setChampions] = useState<ChampionData[]>([]);
 
@@ -111,34 +109,6 @@ export default function ResultPhase({
     return false;
   }, [gameInfo]);
 
-  // 승패가 결정되는지 확인하는 로직
-  const isMatchDecided = useMemo(() => {
-    if (!selectedWinner) return false;
-
-    const matchFormat = gameInfo.settings.matchFormat || "bo1";
-    const blueScore = getCurrentBlueScore();
-    const redScore = getCurrentRedScore();
-
-    // bo1에서는 항상 승패가 결정됨
-    if (matchFormat === "bo1") {
-      return true;
-    }
-
-    // bo3에서는 한 팀이 1점이고 현재 세트에서 승리한 경우
-    if (matchFormat === "bo3") {
-      if (selectedWinner === "blue" && blueScore === 1) return true;
-      if (selectedWinner === "red" && redScore === 1) return true;
-    }
-
-    // bo5에서는 한 팀이 2점이고 현재 세트에서 승리한 경우
-    if (matchFormat === "bo5") {
-      if (selectedWinner === "blue" && blueScore === 2) return true;
-      if (selectedWinner === "red" && redScore === 2) return true;
-    }
-
-    return false;
-  }, [selectedWinner, gameInfo]);
-
   // Extract ban and pick data from gameInfo
   const blueBans: string[] = [];
   const redBans: string[] = [];
@@ -207,11 +177,6 @@ export default function ResultPhase({
 
     // 결과만 서버로 전송 (진영 선택은 별도 페이즈에서 처리)
     onConfirmResult(selectedWinner);
-  };
-
-  // 메인 페이지로 이동하는 핸들러 추가
-  const handleGoToMain = () => {
-    router.push("/");
   };
 
   // Get champion image URL from the champion ID
@@ -369,23 +334,16 @@ export default function ResultPhase({
             </button>
 
             <button
-              onClick={
-                isMatchDecided ? handleGoToMain : handleConfirmAndProceed
-              }
+              onClick={handleConfirmAndProceed}
               disabled={!isHost || !selectedWinner}
               className={`px-6 py-3 rounded-md font-bold transition-colors
                 ${
                   isHost && selectedWinner
-                    ? "cursor-pointer"
-                    : "cursor-not-allowed opacity-50"
-                }
-                ${
-                  isMatchDecided
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-gray-600 hover:bg-gray-700"
+                    ? "cursor-pointer bg-gray-600 hover:bg-gray-700"
+                    : "cursor-not-allowed opacity-50 bg-gray-600"
                 }`}
             >
-              {isMatchDecided ? "메인 페이지로" : "결과 확정"}
+              결과 확정
             </button>
 
             <button

@@ -22,6 +22,7 @@ export interface Player {
  * Game information structure returned by the API
  */
 export interface GameInfo {
+  code?: string; // 서버에서 반환하는 게임 코드 (대안)
   game: {
     gameCode: string;
     createdAt: number;
@@ -53,6 +54,7 @@ export interface GameInfo {
   clients: Player[]; // Connected clients/players
   team1Score?: number; // 팀 1 점수
   team2Score?: number; // 팀 2 점수
+  results?: string[][]; // 각 세트별 결과 데이터 (phaseData 배열들)
   // 하위 호환성을 위한 필드들
   blueScore?: number; // Now at top level
   redScore?: number; // Now at top level
