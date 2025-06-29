@@ -1194,21 +1194,38 @@ export default function DraftPhase({
                 isActive={playersTurn}
                 onTimeout={() => {
                   if (!playersTurn) return;
-                  if (selectedChampion) {
-                    handleConfirmSelection();
-                  } else {
-                    const pickable = filteredChampions.filter(
-                      (champ) => !isChampionDisabled(champ.id)
-                    );
-                    if (pickable.length > 0) {
-                      const randomIdx = Math.floor(
-                        Math.random() * pickable.length
-                      );
-                      const randomChampion = pickable[randomIdx];
-                      handleChampionClick(randomChampion.id);
-                      setAutoConfirmPending(true); // 확정 대기 상태로 변경
+
+                  // 2초 유예시간 후 자동 처리
+                  setTimeout(() => {
+                    if (selectedChampion) {
+                      // 챔피언이 선택되어 있으면 확정
+                      handleConfirmSelection();
+                    } else {
+                      // 아무것도 선택되지 않은 경우
+                      const currentAction = getCurrentAction();
+
+                      if (currentAction === "BAN") {
+                        // 밴 페이즈인 경우 빈 칸으로 확정 (빈 문자열로 설정 후 확정)
+                        setSelectedChampion("");
+                        setTimeout(() => {
+                          onConfirmSelection(); // 부모 컴포넌트의 확정 함수 직접 호출
+                        }, 100);
+                      } else {
+                        // 픽 페이즈인 경우 랜덤 챔피언 선택 후 확정
+                        const pickable = filteredChampions.filter(
+                          (champ) => !isChampionDisabled(champ.id)
+                        );
+                        if (pickable.length > 0) {
+                          const randomIdx = Math.floor(
+                            Math.random() * pickable.length
+                          );
+                          const randomChampion = pickable[randomIdx];
+                          handleChampionClick(randomChampion.id);
+                          setAutoConfirmPending(true); // 확정 대기 상태로 변경
+                        }
+                      }
                     }
-                  }
+                  }, 2000); // 2초 유예시간
                 }}
                 resetKey={`phase-${gameInfo.status.phase}`}
               />
