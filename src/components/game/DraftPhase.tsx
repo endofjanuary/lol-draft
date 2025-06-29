@@ -714,6 +714,7 @@ export default function DraftPhase({
     // Only update if the selection has changed to avoid unnecessary re-renders
     if (selectedChampion !== championId) {
       setSelectedChampion(championId);
+      setCurrentPhaseSelectedChampion(championId); // 현재 페이즈 선택 챔피언도 설정
       setSelectionSent(false); // Reset the selection sent flag
       onSelectChampion(championId);
       console.log(`선택 상태 업데이트: ${championId}`);
@@ -756,7 +757,6 @@ export default function DraftPhase({
 
     // 확정 전에 즉시 선택 상태 초기화 - 다음 페이즈에 영향 없도록
     setSelectedChampion(null);
-    setCurrentPhaseSelectedChampion(null);
     setSelectionSent(true); // 확정 상태로 설정
 
     // 미리 로컬에서 UI 업데이트 (깜빡임 방지)
@@ -835,6 +835,7 @@ export default function DraftPhase({
     // 200ms 후 선택 확정 상태 다시 초기화
     setTimeout(() => {
       setSelectionSent(false);
+      setCurrentPhaseSelectedChampion(null); // 확정 후 현재 페이즈 선택 챔피언 초기화
     }, 200);
   };
 
@@ -958,7 +959,9 @@ export default function DraftPhase({
 
     return (
       <div
-        className={`w-10 h-10 rounded-md bg-gray-800 overflow-hidden relative`}
+        className={`w-10 h-10 rounded-md bg-gray-800 overflow-hidden relative ${
+          isCurrentPhase ? "current-phase-highlight" : ""
+        }`}
       >
         {championId && (
           <div className="relative w-full h-full">
@@ -975,7 +978,7 @@ export default function DraftPhase({
           </div>
         )}
         {shouldShowSelectedChampion && (
-          <div className="absolute inset-0 border-2 border-yellow-400 rounded-md">
+          <div className="absolute inset-0 rounded-md">
             <Image
               src={getChampionImageUrl(currentPhaseSelectedChampion)}
               alt={currentPhaseSelectedChampion}
@@ -1053,16 +1056,55 @@ export default function DraftPhase({
         @keyframes fadeInOut {
           0% {
             background-color: rgba(0, 0, 0, 0);
+            border-color: rgba(0, 0, 0, 0.2);
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
           }
           50% {
-            background-color: rgba(0, 0, 0, 0.6);
+            background-color: rgba(0, 0, 0, 1);
+            border-color: rgba(0, 0, 0, 1);
+            box-shadow: 0 0 8px 2px rgba(0, 0, 0, 0.7);
           }
           100% {
             background-color: rgba(0, 0, 0, 0);
+            border-color: rgba(0, 0, 0, 0.2);
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
           }
         }
-        .champion-highlight {
-          animation: fadeInOut 1.5s infinite;
+        .current-phase-highlight {
+          animation: fadeInOut 1.8s ease-in-out infinite;
+          border: 2px solid transparent;
+          transition: all 0.3s ease;
+        }
+        .current-phase-highlight::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            45deg,
+            rgba(0, 0, 0, 0) 0%,
+            rgba(0, 0, 0, 0.3) 50%,
+            rgba(0, 0, 0, 0) 100%
+          );
+          border-radius: inherit;
+          z-index: 10;
+          animation: overlayPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes overlayPulse {
+          0% {
+            opacity: 0;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.02);
+          }
+          100% {
+            opacity: 0;
+            transform: scale(1);
+          }
         }
       `}</style>
       {/* Use max-w container to limit overall width */}
@@ -1195,12 +1237,28 @@ export default function DraftPhase({
                     }
                   }
 
+                  // 현재 페이즈가 이 픽 슬롯의 페이즈인지 확인
+                  const isCurrentPickPhase = (() => {
+                    const currentPhase = gameInfo.status.phase;
+                    const myTeamPickPhases =
+                      myTeamSide === "blue"
+                        ? [7, 10, 11, 18, 19] // 블루팀 픽 페이즈들
+                        : [8, 9, 12, 17, 20]; // 레드팀 픽 페이즈들
+
+                    const phaseIndex = myTeamPickPhases[i];
+                    return currentPhase === phaseIndex;
+                  })();
+
                   return (
                     <div
                       key={`my-team-player-${i}`}
                       className="flex items-center gap-3"
                     >
-                      <div className="w-12 h-12 bg-gray-800 rounded-md overflow-hidden border border-gray-600 flex-shrink-0">
+                      <div
+                        className={`w-12 h-12 bg-gray-800 rounded-md overflow-hidden border border-gray-600 flex-shrink-0 relative ${
+                          isCurrentPickPhase ? "current-phase-highlight" : ""
+                        }`}
+                      >
                         {championId && (
                           <Image
                             src={getChampionImageUrl(championId)}
@@ -1210,6 +1268,21 @@ export default function DraftPhase({
                             className="w-full h-full object-cover"
                           />
                         )}
+                        {isCurrentPickPhase &&
+                          currentPhaseSelectedChampion &&
+                          !selectionSent && (
+                            <div className="absolute inset-0 rounded-md">
+                              <Image
+                                src={getChampionImageUrl(
+                                  currentPhaseSelectedChampion
+                                )}
+                                alt={currentPhaseSelectedChampion}
+                                width={48}
+                                height={48}
+                                className="w-full h-full object-cover opacity-80"
+                              />
+                            </div>
+                          )}
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold text-white truncate">
@@ -1458,12 +1531,28 @@ export default function DraftPhase({
                     }
                   }
 
+                  // 현재 페이즈가 이 픽 슬롯의 페이즈인지 확인
+                  const isCurrentPickPhase = (() => {
+                    const currentPhase = gameInfo.status.phase;
+                    const opponentTeamPickPhases =
+                      opponentTeamSide === "red"
+                        ? [8, 9, 12, 17, 20] // 레드팀 픽 페이즈들
+                        : [7, 10, 11, 18, 19]; // 블루팀 픽 페이즈들
+
+                    const phaseIndex = opponentTeamPickPhases[i];
+                    return currentPhase === phaseIndex;
+                  })();
+
                   return (
                     <div
                       key={`opponent-team-player-${i}`}
                       className="flex items-center gap-3"
                     >
-                      <div className="w-12 h-12 bg-gray-800 rounded-md overflow-hidden border border-gray-600 flex-shrink-0">
+                      <div
+                        className={`w-12 h-12 bg-gray-800 rounded-md overflow-hidden border border-gray-600 flex-shrink-0 relative ${
+                          isCurrentPickPhase ? "current-phase-highlight" : ""
+                        }`}
+                      >
                         {championId && (
                           <Image
                             src={getChampionImageUrl(championId)}
@@ -1473,6 +1562,21 @@ export default function DraftPhase({
                             className="w-full h-full object-cover"
                           />
                         )}
+                        {isCurrentPickPhase &&
+                          currentPhaseSelectedChampion &&
+                          !selectionSent && (
+                            <div className="absolute inset-0 rounded-md">
+                              <Image
+                                src={getChampionImageUrl(
+                                  currentPhaseSelectedChampion
+                                )}
+                                alt={currentPhaseSelectedChampion}
+                                width={48}
+                                height={48}
+                                className="w-full h-full object-cover opacity-80"
+                              />
+                            </div>
+                          )}
                       </div>
                       <div className="min-w-0">
                         <div className="font-semibold text-white truncate">
