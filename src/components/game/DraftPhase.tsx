@@ -1139,7 +1139,12 @@ export default function DraftPhase({
               >
                 {isSpectator
                   ? myTeamName || (myTeamSide === "blue" ? "블루팀" : "레드팀")
-                  : myTeamName || "내 팀"}
+                  : myTeamName || "내 팀"}{" "}
+                <span className="text-white">
+                  {myTeam === "team1"
+                    ? gameInfo.team1Score || 0
+                    : gameInfo.team2Score || 0}
+                </span>
               </h3>
             </div>
 
@@ -1395,7 +1400,12 @@ export default function DraftPhase({
                 {isSpectator
                   ? opponentTeamName ||
                     (opponentTeamSide === "red" ? "레드팀" : "블루팀")
-                  : opponentTeamName || "상대팀"}
+                  : opponentTeamName || "상대팀"}{" "}
+                <span className="text-white">
+                  {opponentTeam === "team1"
+                    ? gameInfo.team1Score || 0
+                    : gameInfo.team2Score || 0}
+                </span>
               </h3>
             </div>
 
