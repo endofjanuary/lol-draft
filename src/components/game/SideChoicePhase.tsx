@@ -43,8 +43,8 @@ export default function SideChoicePhase({
             className={losingSide === "blue" ? "text-blue-400" : "text-red-400"}
           >
             {losingTeamName}
-          </span>
-          이 다음 세트의 진영을 선택할 수 있습니다.
+          </span>{" "}
+          팀이 다음 세트의 진영을 선택할 수 있습니다.
         </p>
 
         <div className="flex gap-8 justify-center mb-8">
