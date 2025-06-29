@@ -308,9 +308,15 @@ export default function LobbyPhase({
 
   return (
     <div className="container mx-auto p-4 py-8">
+      {/* 경기 이름을 메인 제목으로 표시 */}
       <h1 className="text-2xl font-bold text-center mb-2">
-        {teamDisplayInfo.blueTeamName} vs {teamDisplayInfo.redTeamName}
+        {gameInfo.settings?.gameName || "새로운 게임"}
       </h1>
+
+      {/* 팀 이름을 부제목으로 표시 */}
+      <h2 className="text-lg text-center mb-4 text-gray-300">
+        {teamDisplayInfo.blueTeamName} vs {teamDisplayInfo.redTeamName}
+      </h2>
 
       <div className="flex justify-center items-center mb-6 gap-2">
         <div className="bg-gray-800 px-3 py-1 rounded text-gray-300 flex items-center">
