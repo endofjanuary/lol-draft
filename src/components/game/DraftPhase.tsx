@@ -932,28 +932,43 @@ export default function DraftPhase({
   };
 
   const renderBanSlot = (team: string, index: number) => {
+    /*
+    ===== 밴 슬롯 렌더링 함수 =====
+    각 팀의 밴 슬롯을 렌더링하고, 현재 페이즈에 해당하는 슬롯에 깜빡임 효과 적용
+    
+    매개변수:
+    - team: "team1" 또는 "team2" (myTeam, opponentTeam 값)
+    - index: 밴 슬롯 인덱스 (0-4, 총 5개 밴 슬롯)
+    
+    밴 페이즈 순서:
+    - 1-6 페이즈: 첫 번째 밴 라운드 (각 팀 3개씩)
+    - 13-16 페이즈: 두 번째 밴 라운드 (각 팀 2개씩)
+    */
+
     // 팀 기준으로 밴 데이터 가져오기 (진영이 바뀌어도 올바른 팀 데이터 사용)
     const teamSide = team === myTeam ? myTeamSide : opponentTeamSide;
     const bans = teamSide === "blue" ? blueBans : redBans;
     const championId = bans[index];
     const currentPhase = gameInfo.status.phase;
 
-    // 밴 페이즈 계산 수정 - 진영 기반으로 계산
+    // 밴 페이즈 계산 - 진영 기반으로 정확한 페이즈 번호 계산
     let banPhase;
     if (index < 3) {
       // 첫 번째 밴 페이즈 (1-6): blue→red→blue→red→blue→red
+      // 블루팀: 1, 3, 5 / 레드팀: 2, 4, 6
       banPhase = teamSide === "blue" ? index * 2 + 1 : index * 2 + 2;
     } else {
       // 두 번째 밴 페이즈 (13-16): red→blue→red→blue
+      // 레드팀: 13, 15 / 블루팀: 14, 16
       const secondBanIndex = index - 3;
       banPhase =
         teamSide === "red" ? 13 + secondBanIndex * 2 : 14 + secondBanIndex * 2;
     }
 
-    // 현재 페이즈가 정확히 이 슬롯의 밴 페이즈와 일치하는지 확인
+    // 깜빡임 효과 적용 조건: 현재 페이즈가 정확히 이 슬롯의 밴 페이즈와 일치
     const isCurrentPhase = currentPhase === banPhase;
 
-    // 정확한 페이즈가 아니거나 선택이 확정된 상태면 선택 중인 챔피언 표시하지 않음
+    // 선택 중인 챔피언 표시 조건: 현재 페이즈 + 챔피언 선택됨 + 아직 확정 안됨
     const shouldShowSelectedChampion =
       isCurrentPhase && currentPhaseSelectedChampion && !selectionSent;
 
@@ -1053,59 +1068,107 @@ export default function DraftPhase({
   return (
     <div className="min-h-screen bg-[#030C28] text-white p-4 flex flex-col items-center justify-center">
       <style jsx global>{`
+        /* 
+        ===== 드래프트 페이즈 깜빡임 효과 CSS =====
+        현재 선택이 진행 중인 밴/픽 슬롯에 적용되는 애니메이션
+        
+        사용 위치:
+        - 밴 슬롯: renderBanSlot() 함수에서 isCurrentPhase가 true일 때
+        - 픽 슬롯: 내팀/상대팀 픽 슬롯에서 isCurrentPickPhase가 true일 때
+        
+        효과 설명:
+        1. fadeInOut: 메인 배경/테두리 깜빡임 (1.8초 주기)
+        2. overlayPulse: 오버레이 그라데이션 + 미세한 스케일 효과 (1.8초 주기)
+        */
+
+        /* 메인 깜빡임 애니메이션 - 배경과 테두리가 검정색으로 fade in/out */
         @keyframes fadeInOut {
           0% {
-            background-color: rgba(0, 0, 0, 0);
-            border-color: rgba(0, 0, 0, 0.2);
-            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+            background-color: rgba(0, 0, 0, 0); /* 완전 투명 */
+            border-color: rgba(0, 0, 0, 0.2); /* 연한 검정 테두리 */
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); /* 그림자 없음 */
           }
           50% {
-            background-color: rgba(0, 0, 0, 1);
-            border-color: rgba(0, 0, 0, 1);
-            box-shadow: 0 0 8px 2px rgba(0, 0, 0, 0.7);
+            background-color: rgba(
+              0,
+              0,
+              0,
+              1
+            ); /* 완전 불투명 검정 - 챔피언 이미지 완전히 가림 */
+            border-color: rgba(0, 0, 0, 1); /* 진한 검정 테두리 */
+            box-shadow: 0 0 8px 2px rgba(0, 0, 0, 0.7); /* 강한 검정 그림자로 깊이감 */
           }
           100% {
-            background-color: rgba(0, 0, 0, 0);
-            border-color: rgba(0, 0, 0, 0.2);
-            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+            background-color: rgba(0, 0, 0, 0); /* 다시 완전 투명 */
+            border-color: rgba(0, 0, 0, 0.2); /* 연한 검정 테두리 */
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); /* 그림자 없음 */
           }
         }
+
+        /* 현재 페이즈 하이라이트 클래스 - 밴/픽 슬롯에 적용 */
         .current-phase-highlight {
-          animation: fadeInOut 1.8s ease-in-out infinite;
-          border: 2px solid transparent;
-          transition: all 0.3s ease;
+          animation: fadeInOut 1.8s ease-in-out infinite; /* 1.8초 주기, 부드러운 가속/감속 */
+          border: 2px solid transparent; /* 기본 투명 테두리 (애니메이션에서 덮어씀) */
+          transition: all 0.3s ease; /* 상태 변화 시 0.3초 부드러운 전환 */
         }
+
+        /* 오버레이 효과 - ::before 가상 요소로 추가적인 시각 효과 제공 */
         .current-phase-highlight::before {
-          content: "";
-          position: absolute;
+          content: ""; /* 가상 요소 생성 */
+          position: absolute; /* 부모 요소 기준 절대 위치 */
           top: 0;
           left: 0;
           right: 0;
-          bottom: 0;
+          bottom: 0; /* 부모 요소 전체 영역 덮음 */
           background: linear-gradient(
-            45deg,
+            /* 45도 각도의 그라데이션 */ 45deg,
             rgba(0, 0, 0, 0) 0%,
-            rgba(0, 0, 0, 0.3) 50%,
-            rgba(0, 0, 0, 0) 100%
+            /* 시작: 완전 투명 */ rgba(0, 0, 0, 0.3) 50%,
+            /* 중간: 30% 검정 */ rgba(0, 0, 0, 0) 100% /* 끝: 완전 투명 */
           );
-          border-radius: inherit;
-          z-index: 10;
-          animation: overlayPulse 1.8s ease-in-out infinite;
+          border-radius: inherit; /* 부모 요소의 border-radius 상속 */
+          z-index: 10; /* 챔피언 이미지 위에 표시 */
+          animation: overlayPulse 1.8s ease-in-out infinite; /* 펄스 애니메이션 */
         }
+
+        /* 오버레이 펄스 애니메이션 - 투명도와 스케일 변화로 생동감 추가 */
         @keyframes overlayPulse {
           0% {
-            opacity: 0;
-            transform: scale(1);
+            opacity: 0; /* 완전 투명 */
+            transform: scale(1); /* 원본 크기 */
           }
           50% {
-            opacity: 1;
-            transform: scale(1.02);
+            opacity: 1; /* 완전 불투명 */
+            transform: scale(1.02); /* 2% 확대 - 미세한 펄스 효과 */
           }
           100% {
-            opacity: 0;
-            transform: scale(1);
+            opacity: 0; /* 다시 완전 투명 */
+            transform: scale(1); /* 원본 크기로 복귀 */
           }
         }
+
+        /* 
+        ===== 사용법 및 유지보수 가이드 =====
+        
+        1. 깜빡임 효과 조정:
+           - 속도 변경: fadeInOut, overlayPulse의 1.8s 값 수정
+           - 강도 변경: rgba 값의 투명도 조정 (0~1)
+           - 그림자 강도: box-shadow의 blur, spread, alpha 값 조정
+        
+        2. 애니메이션 타이밍:
+           - ease-in-out: 부드러운 시작/끝
+           - linear: 일정한 속도
+           - ease: 기본 가속/감속
+        
+        3. 클래스 적용 조건:
+           - 밴 슬롯: isCurrentPhase === true
+           - 픽 슬롯: isCurrentPickPhase === true
+           
+        4. 성능 고려사항:
+           - CSS 애니메이션 사용으로 GPU 가속 활용
+           - transform, opacity 속성 사용으로 리페인트 최소화
+           - infinite 애니메이션이므로 페이지 이탈 시 정리 필요 없음
+        */
       `}</style>
       {/* Use max-w container to limit overall width */}
       <div className="w-full max-w-7xl">
@@ -1237,15 +1300,30 @@ export default function DraftPhase({
                     }
                   }
 
-                  // 현재 페이즈가 이 픽 슬롯의 페이즈인지 확인
+                  /*
+                  ===== 내 팀 픽 슬롯 깜빡임 효과 계산 =====
+                  현재 페이즈가 이 픽 슬롯에 해당하는 페이즈인지 확인
+                  
+                  픽 페이즈 순서 (BO5 기준):
+                  - 7, 8: 1픽 (블루 → 레드)
+                  - 9, 10: 2픽 (레드 → 블루)  
+                  - 11, 12: 3픽 (블루 → 레드)
+                  - 17, 18: 4픽 (레드 → 블루)
+                  - 19, 20: 5픽 (블루 → 레드)
+                  
+                  각 슬롯(i)은 해당하는 픽 순서의 페이즈에서만 깜빡임
+                  */
                   const isCurrentPickPhase = (() => {
                     const currentPhase = gameInfo.status.phase;
+                    // 내 팀의 픽 페이즈 배열 (진영에 따라 다름)
                     const myTeamPickPhases =
                       myTeamSide === "blue"
                         ? [7, 10, 11, 18, 19] // 블루팀 픽 페이즈들
                         : [8, 9, 12, 17, 20]; // 레드팀 픽 페이즈들
 
+                    // 현재 슬롯(i)에 해당하는 페이즈 번호
                     const phaseIndex = myTeamPickPhases[i];
+                    // 현재 페이즈와 일치하면 깜빡임 효과 적용
                     return currentPhase === phaseIndex;
                   })();
 
@@ -1531,15 +1609,22 @@ export default function DraftPhase({
                     }
                   }
 
-                  // 현재 페이즈가 이 픽 슬롯의 페이즈인지 확인
+                  /*
+                  ===== 상대팀 픽 슬롯 깜빡임 효과 계산 =====
+                  상대팀의 현재 페이즈가 이 픽 슬롯에 해당하는 페이즈인지 확인
+                  내 팀과 동일한 로직이지만 상대팀 진영 기준으로 계산
+                  */
                   const isCurrentPickPhase = (() => {
                     const currentPhase = gameInfo.status.phase;
+                    // 상대팀의 픽 페이즈 배열 (상대팀 진영에 따라 다름)
                     const opponentTeamPickPhases =
                       opponentTeamSide === "red"
                         ? [8, 9, 12, 17, 20] // 레드팀 픽 페이즈들
                         : [7, 10, 11, 18, 19]; // 블루팀 픽 페이즈들
 
+                    // 현재 슬롯(i)에 해당하는 상대팀 페이즈 번호
                     const phaseIndex = opponentTeamPickPhases[i];
+                    // 현재 페이즈와 일치하면 깜빡임 효과 적용
                     return currentPhase === phaseIndex;
                   })();
 
