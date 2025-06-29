@@ -3,10 +3,10 @@ import { getApiBaseUrl } from "@/utils/apiConfig";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gameId = params.id;
+    const { id: gameId } = await params;
 
     if (!gameId) {
       return NextResponse.json(
@@ -60,10 +60,12 @@ export async function GET(
         "백엔드 서버에 연결할 수 없습니다. Mock 데이터를 사용합니다."
       );
 
+      const { id: gameId } = await params;
+
       const mockGameInfo = {
-        code: params.id,
+        code: gameId,
         game: {
-          gameCode: params.id,
+          gameCode: gameId,
           createdAt: Date.now(),
         },
         settings: {
