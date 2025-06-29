@@ -162,7 +162,7 @@ export default function LobbyPhase({
           isCurrentPlayerTeam1
             ? `bg-${team1Color}-700 border-2 border-yellow-300`
             : team1Player?.isReady
-            ? `bg-${team1Color}-800 border-2 border-green-400 shadow-md shadow-green-500/30`
+            ? `bg-${team1Color}-700 border-2 border-green-400 shadow-md shadow-green-500/30`
             : `bg-${team1Color}-900 hover:bg-${team1Color}-800`
         } ${
           !isCurrentPlayerTeam1 &&
@@ -227,7 +227,7 @@ export default function LobbyPhase({
           isCurrentPlayerTeam2
             ? `bg-${team2Color}-700 border-2 border-yellow-300`
             : team2Player?.isReady
-            ? `bg-${team2Color}-800 border-2 border-green-400 shadow-md shadow-green-500/30`
+            ? `bg-${team2Color}-700 border-2 border-green-400 shadow-md shadow-green-500/30`
             : `bg-${team2Color}-900 hover:bg-${team2Color}-800`
         } ${
           !isCurrentPlayerTeam2 &&
