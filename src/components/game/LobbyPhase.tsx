@@ -442,7 +442,9 @@ export default function LobbyPhase({
                 </>
               ) : !isFirstSet() ? (
                 <>
-                  <span className="text-gray-400">첫 세트 이후 관전 불가</span>
+                  <span className="text-gray-400">
+                    1세트 이후에는 관전자 페이지로 이동이 불가능합니다.
+                  </span>
                 </>
               ) : (
                 "관전하기"
