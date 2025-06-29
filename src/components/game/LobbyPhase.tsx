@@ -436,15 +436,15 @@ export default function LobbyPhase({
                 !isReady && isFirstSet() && onPositionChange("spectator")
               }
             >
-              {isReady ? (
-                <>
-                  <span className="text-gray-400">준비 취소 후 관전 가능</span>
-                </>
-              ) : !isFirstSet() ? (
+              {!isFirstSet() ? (
                 <>
                   <span className="text-gray-400">
                     1세트 이후에는 관전자 페이지로 이동이 불가능합니다.
                   </span>
+                </>
+              ) : isReady ? (
+                <>
+                  <span className="text-gray-400">준비 취소 후 관전 가능</span>
                 </>
               ) : (
                 "관전하기"
