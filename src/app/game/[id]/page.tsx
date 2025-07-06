@@ -9,7 +9,7 @@ import DraftPhase from "@/components/game/DraftPhase";
 import ResultPhase from "@/components/game/ResultPhase";
 import SideChoicePhase from "@/components/game/SideChoicePhase";
 import FinalResultPhase from "@/components/game/FinalResultPhase";
-import { GameInfo, Player } from "@/types/game";
+import { GameInfo, Player, SetResult } from "@/types/game";
 import { getApiBaseUrl, getSocketUrl } from "@/utils/apiConfig";
 import {
   getStoredSocketId,
@@ -901,20 +901,30 @@ export default function GamePage() {
         redScore: 1, // 하위 호환성
         results: [
           // 1세트 데이터 (T1 승리)
-          Array(22)
-            .fill("")
-            .map((_, i) => (i === 21 ? "blue" : "")) as string[],
+          {
+            phaseData: Array(22)
+              .fill("")
+              .map((_, i) => (i === 21 ? "team1" : "")) as string[],
+            team1Side: "blue",
+            team2Side: "red",
+            winner: "team1",
+          } as SetResult,
           // 2세트 데이터 (GEN 승리)
-          Array(22)
-            .fill("")
-            .map((_, i) => (i === 21 ? "red" : "")) as string[],
+          {
+            phaseData: Array(22)
+              .fill("")
+              .map((_, i) => (i === 21 ? "team2" : "")) as string[],
+            team1Side: "red",
+            team2Side: "blue",
+            winner: "team2",
+          } as SetResult,
           // 3세트 데이터는 현재 phaseData에 있음 (T1 승리)
         ],
         status: {
           ...baseData.status,
           phaseData: Array(22)
             .fill("")
-            .map((_, i) => (i === 21 ? "blue" : "")) as string[],
+            .map((_, i) => (i === 21 ? "team1" : "")) as string[],
         },
       };
     } else {
@@ -930,7 +940,7 @@ export default function GamePage() {
           ...baseData.status,
           phaseData: Array(22)
             .fill("")
-            .map((_, i) => (i === 21 ? "blue" : "")) as string[],
+            .map((_, i) => (i === 21 ? "team1" : "")) as string[],
         },
       };
     }
