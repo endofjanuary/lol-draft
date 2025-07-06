@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { GameInfo, ChampionData } from "@/types/game";
+import { GameInfo, ChampionData, SetResult } from "@/types/game";
 import { useRouter } from "next/navigation";
 
 interface FinalResultPhaseProps {
@@ -183,45 +183,30 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
     );
   };
 
-  // 세트별 누적 점수 계산 함수 (단순화)
-  const getScoreUpToSet = (
-    setNumber: number,
-    sides: { team1Side: string; team2Side: string }
-  ) => {
-    // 해당 세트의 진영에 따라 점수 매핑
-    const teamInfo = getTeamInfo();
+  // 세트별 결과 렌더링 (저장된 진영 정보 직접 사용)
+  const renderSetResult = (setNumber: number, setResult: SetResult) => {
+    const { blueBans, redBans, bluePicks, redPicks } = extractSetData(
+      setResult.phaseData
+    );
 
-    return {
-      blueScore:
-        sides.team1Side === "blue" ? teamInfo.team1Score : teamInfo.team2Score,
-      redScore:
-        sides.team1Side === "red" ? teamInfo.team1Score : teamInfo.team2Score,
-    };
-  };
-
-  // 세트별 결과 렌더링 (정확한 진영 계산)
-  const renderSetResult = (
-    setNumber: number,
-    phaseData: string[],
-    winner: string
-  ) => {
-    const { blueBans, redBans, bluePicks, redPicks } =
-      extractSetData(phaseData);
-
-    // 해당 세트의 정확한 진영 정보 계산
-    const sides = getSidesForSet(setNumber);
+    // 저장된 진영 정보 직접 사용
     const blueTeamName =
-      sides.team1Side === "blue" ? teamInfo.team1Name : teamInfo.team2Name;
+      setResult.team1Side === "blue" ? teamInfo.team1Name : teamInfo.team2Name;
     const redTeamName =
-      sides.team1Side === "red" ? teamInfo.team1Name : teamInfo.team2Name;
-    const score = getScoreUpToSet(setNumber, sides);
+      setResult.team1Side === "red" ? teamInfo.team1Name : teamInfo.team2Name;
 
-    // 승자 정보를 팀명으로 변환 (해당 세트의 진영 기준)
+    // 점수 계산 (단순화 - 현재 총 점수 사용)
+    const score = {
+      blueScore: teamInfo.team1Score,
+      redScore: teamInfo.team2Score,
+    };
+
+    // 승자 정보를 팀명으로 변환 (팀 기준)
     const getWinnerText = () => {
-      if (winner === "blue") {
-        return `${blueTeamName} 승리`;
-      } else if (winner === "red") {
-        return `${redTeamName} 승리`;
+      if (setResult.winner === "team1") {
+        return `${teamInfo.team1Name} 승리`;
+      } else if (setResult.winner === "team2") {
+        return `${teamInfo.team2Name} 승리`;
       } else {
         return "승자 정보 없음";
       }
@@ -255,7 +240,10 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
               <h4 className="text-lg font-bold text-blue-400">
                 {blueTeamName}
               </h4>
-              {winner === "blue" && (
+              {((setResult.winner === "team1" &&
+                setResult.team1Side === "blue") ||
+                (setResult.winner === "team2" &&
+                  setResult.team2Side === "blue")) && (
                 <span className="text-yellow-400 text-lg">🏆</span>
               )}
             </div>
@@ -292,7 +280,10 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
           <div className="w-full md:w-1/2 bg-red-900 bg-opacity-20 rounded-lg p-4">
             <div className="flex justify-between items-center mb-4">
               <h4 className="text-lg font-bold text-red-400">{redTeamName}</h4>
-              {winner === "red" && (
+              {((setResult.winner === "team1" &&
+                setResult.team1Side === "red") ||
+                (setResult.winner === "team2" &&
+                  setResult.team2Side === "red")) && (
                 <span className="text-yellow-400 text-lg">🏆</span>
               )}
             </div>
@@ -329,37 +320,16 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
     );
   };
 
-  // 세트별 진영 정보를 정확히 계산하는 함수 (역방향 계산)
-  const getSidesForSet = (setNumber: number) => {
-    // 현재 세트 번호 계산 (총 완료된 세트 수)
-    const currentSetNumber = gameResults.length;
-    const currentTeam1Side = gameInfo.status.team1Side;
-    const currentTeam2Side = gameInfo.status.team2Side;
+  // 모든 세트 결과를 가져오는 로직 (새로운 SetResult 구조 사용)
+  const getAllSetResults = (): SetResult[] => {
+    const results: SetResult[] = [];
 
-    // 현재 세트에서 목표 세트까지의 차이 계산
-    const setDifference = currentSetNumber - setNumber;
-
-    // 세트 차이가 짝수면 진영 동일, 홀수면 진영 반대
-    if (setDifference % 2 === 0) {
-      return {
-        team1Side: currentTeam1Side,
-        team2Side: currentTeam2Side,
-      };
-    } else {
-      return {
-        team1Side: currentTeam1Side === "blue" ? "red" : "blue",
-        team2Side: currentTeam2Side === "blue" ? "red" : "blue",
-      };
-    }
-  };
-
-  // 모든 세트 결과를 가져오는 로직 (마지막 세트 phaseData 포함)
-  const getAllSetResults = () => {
-    const results: string[][] = [];
+    // 완료된 세트 결과들 추가
     if (Array.isArray(gameInfo.results)) {
       results.push(...gameInfo.results);
     }
-    // 현재 진행 중인 세트가 완성된 경우(phaseData[21]에 승자 정보가 있으면), 마지막 세트로 추가
+
+    // 현재 진행 중인 세트가 완성된 경우, 마지막 세트로 추가
     // 단, 이미 results에 포함되지 않은 경우에만 추가 (중복 방지)
     if (
       Array.isArray(gameInfo.status.phaseData) &&
@@ -371,16 +341,24 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
       const isAlreadyIncluded = results.some((result, index) => {
         // 같은 인덱스의 세트가 동일한 승자를 가지고 있는지 확인
         return (
-          result.length >= 22 &&
-          result[21] === gameInfo.status.phaseData[21] &&
+          result.phaseData.length >= 22 &&
+          result.winner === gameInfo.status.phaseData[21] &&
           index === results.length - 1
         ); // 마지막 세트인지 확인
       });
 
       if (!isAlreadyIncluded) {
-        results.push(gameInfo.status.phaseData);
+        // 현재 세트 정보를 SetResult 형태로 생성
+        const currentSetResult: SetResult = {
+          phaseData: gameInfo.status.phaseData,
+          team1Side: gameInfo.status.team1Side,
+          team2Side: gameInfo.status.team2Side,
+          winner: gameInfo.status.phaseData[21] as "team1" | "team2",
+        };
+        results.push(currentSetResult);
       }
     }
+
     return results;
   };
 
@@ -415,10 +393,9 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
       {/* Sets Results */}
       <div className="max-w-6xl mx-auto">
         {gameResults.length > 0 ? (
-          gameResults.map((setResult: string[], setIndex: number) => {
+          gameResults.map((setResult: SetResult, setIndex: number) => {
             const setNumber = setIndex + 1;
-            const winner = setResult[21] || "unknown"; // Phase 21에 승자 정보 저장
-            return renderSetResult(setNumber, setResult, winner);
+            return renderSetResult(setNumber, setResult);
           })
         ) : (
           <div className="bg-gray-900 bg-opacity-50 rounded-lg p-8 text-center">
