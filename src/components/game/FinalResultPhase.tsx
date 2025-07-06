@@ -183,6 +183,27 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
     );
   };
 
+  // 해당 세트까지의 누적 점수 계산
+  const calculateScoreUpToSet = (
+    setNumber: number,
+    gameResults: SetResult[]
+  ) => {
+    let team1Score = 0;
+    let team2Score = 0;
+
+    // 현재 세트까지의 결과만 계산
+    for (let i = 0; i < setNumber && i < gameResults.length; i++) {
+      const result = gameResults[i];
+      if (result.winner === "team1") {
+        team1Score++;
+      } else if (result.winner === "team2") {
+        team2Score++;
+      }
+    }
+
+    return { team1Score, team2Score };
+  };
+
   // 세트별 결과 렌더링 (저장된 진영 정보 직접 사용)
   const renderSetResult = (setNumber: number, setResult: SetResult) => {
     const { blueBans, redBans, bluePicks, redPicks } = extractSetData(
@@ -195,10 +216,17 @@ export default function FinalResultPhase({ gameInfo }: FinalResultPhaseProps) {
     const redTeamName =
       setResult.team1Side === "red" ? teamInfo.team1Name : teamInfo.team2Name;
 
-    // 점수 계산 (단순화 - 현재 총 점수 사용)
+    // 해당 세트까지의 누적 점수 계산
+    const cumulativeScore = calculateScoreUpToSet(setNumber, gameResults);
     const score = {
-      blueScore: teamInfo.team1Score,
-      redScore: teamInfo.team2Score,
+      blueScore:
+        setResult.team1Side === "blue"
+          ? cumulativeScore.team1Score
+          : cumulativeScore.team2Score,
+      redScore:
+        setResult.team1Side === "red"
+          ? cumulativeScore.team1Score
+          : cumulativeScore.team2Score,
     };
 
     // 승자 정보를 팀명으로 변환 (팀 기준)
